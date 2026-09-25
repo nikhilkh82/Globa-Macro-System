@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Macro Trading Brain Dashboard — June 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6fb; --shell:#ffffff; --panel:#ffffff; --panel2:#f8fafc; --input-bg:#ffffff;
+    --line:#e2e8f0; --line2:#cbd5e1;
+    --ink:#0f172a; --muted:#475569; --dim:#94a3b8;
+    --green:#16a34a; --green-bg:rgba(22,163,74,.12); --green-dk:#15803d;
+    --red:#dc2626; --red-bg:rgba(220,38,38,.12); --red-dk:#b91c1c;
+    --amber:#d97706; --amber-bg:rgba(217,119,6,.12); --amber-dk:#b45309;
+    --blue:#2563eb; --blue-bg:rgba(37,99,235,.1);
+    --violet:#7c3aed; --cyan:#0891b2;
+    --radius:8px; --radius-sm:6px;
+    --sidebar-w:248px;
+    --mono:'JetBrains Mono','SF Mono','Consolas','Menlo',monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:13.5px;line-height:1.5;font-feature-settings:'cv11','ss01'}
+  a{color:var(--cyan)}
+  b{color:#0f172a;font-weight:600}
+
+  /* ===== SIDEBAR ===== */
+  .sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:var(--shell);
+    border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+  .sb-brand{padding:20px 20px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+  .sb-logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--amber),var(--red));
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#0a0e1a;letter-spacing:-.5px;flex-shrink:0}
+  .sb-title{font-size:13px;font-weight:700;letter-spacing:-.2px;line-height:1.25}
+  .sb-sub{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+  .sb-nav{flex:1;padding:8px 0}
+  .sb-group{padding:14px 0 4px}
+  .sb-group-label{padding:4px 20px;font-size:9.5px;font-weight:700;color:var(--dim);
+    text-transform:uppercase;letter-spacing:1px}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:8px 20px;color:var(--muted);
+    font-size:12.5px;font-weight:500;cursor:pointer;border-left:2px solid transparent;
+    transition:background .12s,color .12s;text-decoration:none}
+  .sb-item:hover{background:rgba(0,0,0,.04);color:var(--ink)}
+  .sb-item.active{color:var(--amber);border-left-color:var(--amber);background:rgba(245,166,35,.06)}
+  .sb-item .dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5;flex-shrink:0}
+  .sb-item.active .dot{opacity:1}
+  .sb-footer{padding:14px 20px;border-top:1px solid var(--line);font-size:9.5px;color:var(--dim);line-height:1.6}
+
+  /* ===== MAIN CONTENT ===== */
+  .main{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:0 28px;height:56px;display:flex;align-items:center;
+    justify-content:space-between;gap:16px}
+  .topbar-title{font-size:15px;font-weight:700;letter-spacing:-.2px}
+  .topbar-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .meta-chip{font-size:10.5px;font-weight:600;color:var(--muted);padding:4px 10px;border-radius:4px;
+    background:var(--panel2);border:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+  .meta-chip.live{color:var(--green);border-color:rgba(34,197,94,.3)}
+  .meta-chip.live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--green);margin-right:6px;vertical-align:middle;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .content{flex:1;padding:24px 28px 60px;max-width:1480px;width:100%}
+  .section{display:none;animation:fade .2s ease}
+  .section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  /* ===== LAYOUT ===== */
+  .grid{display:grid;gap:16px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  @media(max-width:1100px){.row2,.row3,.row4{grid-template-columns:1fr 1fr}}
+  @media(max-width:760px){.row2,.row3,.row4{grid-template-columns:1fr}}
+
+  /* ===== CARDS ===== */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .card h2{margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:-.2px;color:var(--ink)}
+  .card .hint{color:var(--muted);font-size:11.5px;margin:0 0 16px;line-height:1.55}
+  .card h3{margin:20px 0 10px;font-size:11px;color:var(--amber);font-weight:700;
+    text-transform:uppercase;letter-spacing:1px}
+
+  /* ===== KPIs ===== */
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:4px}
+  .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:12px 14px;border-top:3px solid var(--line2);position:relative;overflow:hidden}
+  .kpi.acc-g{border-top-color:var(--green)} .kpi.acc-r{border-top-color:var(--red)}
+  .kpi.acc-a{border-top-color:var(--amber)} .kpi.acc-b{border-top-color:var(--blue)}
+  .kpi .lab{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .kpi .val{font-size:21px;font-weight:700;margin-top:4px;font-family:var(--mono);letter-spacing:-.3px;color:var(--ink)}
+  .kpi .delta{font-size:10.5px;margin-top:3px;font-family:var(--mono)}
+
+  .pos{color:var(--green)} .neg{color:var(--red)} .neu{color:var(--muted)}
+
+  /* ===== TABLES ===== */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--dim);font-weight:700;font-size:10px;text-transform:uppercase;
+    letter-spacing:.6px;padding:9px 12px;border-bottom:1px solid var(--line2);white-space:nowrap;
+    background:var(--panel2)}
+  td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:nth-child(even) td{background:rgba(0,0,0,.02)}
+  tbody tr:hover td{background:rgba(217,119,6,.06)}
+  td.num,th.num{text-align:right;font-family:var(--mono)}
+  td.mono{font-family:var(--mono)}
+
+  /* ===== TAGS ===== */
+  .tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:9.5px;font-weight:700;
+    letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono)}
+  .tag.long,.tag.bull{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+  .tag.short,.tag.bear{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+  .tag.neutral{background:rgba(141,162,196,.12);color:var(--muted);border:1px solid rgba(141,162,196,.25)}
+  .tag.watch{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+
+  /* ===== STRENGTH METER ===== */
+  .strength{display:inline-flex;gap:2px}
+  .strength i{width:7px;height:13px;border-radius:1px;background:#2a3a5c;display:inline-block}
+  .strength i.on{background:var(--blue)}
+  .strength i.hi{background:var(--green)}
+
+  /* ===== FORMS ===== */
+  input,select{background:var(--input-bg);border:1px solid var(--line2);color:var(--ink);
+    border-radius:var(--radius-sm);padding:8px 10px;font-size:12.5px;width:100%;font-family:var(--mono)}
+  input:focus,select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 1px rgba(245,166,35,.2)}
+  label{font-size:10px;color:var(--dim);display:block;margin-bottom:5px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.5px}
+  .field{margin-bottom:12px}
+  .btn{background:var(--amber);color:#0a0e1a;border:none;padding:9px 18px;border-radius:var(--radius-sm);
+    font-weight:700;cursor:pointer;font-size:12px;transition:.12s;font-family:var(--sans);
+    text-transform:uppercase;letter-spacing:.5px}
+  .btn:hover{background:#ffb84d;box-shadow:0 0 12px rgba(245,166,35,.3)}
+  .btn.ghost{background:transparent;border:1px solid var(--line2);color:var(--muted)}
+  .btn.ghost:hover{background:rgba(0,0,0,.04);color:var(--ink);border-color:var(--amber);box-shadow:none}
+
+  /* ===== OUTPUT BOXES ===== */
+  .out{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:12px 14px;margin-top:8px;border-left:3px solid var(--amber)}
+  .out.acc-b{border-left-color:var(--blue)}
+  .out.acc-g{border-left-color:var(--green)}
+  .out.acc-r{border-left-color:var(--red)}
+  .out .big{font-size:22px;font-weight:700;letter-spacing:-.3px;font-family:var(--mono);color:var(--ink);margin-top:2px}
+
+  /* ===== NOTES ===== */
+  .note{background:var(--amber-bg);border:1px solid rgba(245,166,35,.25);border-left:3px solid var(--amber);
+    border-radius:var(--radius-sm);padding:12px 16px;font-size:12px;color:#92400e;margin:14px 0}
+  .note.blue{background:var(--blue-bg);border-color:rgba(59,130,246,.25);border-left-color:var(--blue);color:#1e40af}
+  .note.green{background:var(--green-bg);border-color:rgba(34,197,94,.25);border-left-color:var(--green);color:#166534}
+
+  ul.clean{margin:8px 0 0;padding-left:16px;color:var(--muted);font-size:11.5px}
+  ul.clean li{margin-bottom:5px}
+
+  /* ===== CHARTS ===== */
+  .chart-box{position:relative;height:300px;margin-top:8px}
+  .chart-box.sm{height:220px}
+  .chart-box.xs{height:110px}
+
+  /* ===== MISC ===== */
+  .mono{font-family:var(--mono);font-feature-settings:'tnum'}
+  details{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:10px 14px;margin-top:10px}
+  details summary{cursor:pointer;font-weight:600;color:var(--amber);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+  details p{margin:8px 0 2px;color:var(--muted);font-size:11.5px}
+  .scroll-x{overflow-x:auto}
+  .scroll-x::-webkit-scrollbar{height:6px}
+  .scroll-x::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+
+  .progress{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px}
+  .progress > div{height:100%;background:linear-gradient(90deg,var(--amber),var(--cyan));border-radius:3px}
+
+  /* ===== REGIME BANNER ===== */
+  .regime-banner{background:linear-gradient(90deg,rgba(245,166,35,.12),rgba(239,68,68,.08));
+    border:1px solid rgba(245,166,35,.3);border-left:4px solid var(--amber);
+    border-radius:var(--radius);padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:16px}
+  .regime-banner .rb-status{flex-shrink:0;width:54px;height:54px;border-radius:8px;
+    background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.4);
+    display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .regime-banner .rb-status .lab{font-size:8px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+  .regime-banner .rb-status .ic{font-size:22px;color:var(--amber);font-weight:800;line-height:1}
+  .regime-banner .txt h2{margin:0;font-size:16px;color:var(--ink);font-weight:700;letter-spacing:-.2px}
+  .regime-banner .txt p{margin:4px 0 0;font-size:11.5px;color:#92400e;line-height:1.55}
+
+  /* ===== GAUGE / ZBAR ===== */
+  .gauge-bar{display:flex;height:22px;border-radius:4px;overflow:hidden;border:1px solid var(--line);
+    font-size:10px;font-weight:700;font-family:var(--mono)}
+  .gauge-bar > div{display:flex;align-items:center;justify-content:center;color:#fff}
+  .zbar{position:relative;height:8px;background:var(--line);border-radius:4px;margin:8px 0}
+  .zbar > i{position:absolute;top:-4px;width:3px;height:16px;background:var(--amber);border-radius:2px;display:block}
+
+  /* ===== COLOR DOT ===== */
+  .cdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:baseline}
+
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--dim);
+    font-size:10.5px;line-height:1.7}
+  .src{font-size:10px;color:var(--dim);font-style:italic;margin-top:8px;padding-top:8px;
+    border-top:1px dashed var(--line)}
+
+  /* ===== RESPONSIVE SIDEBAR ===== */
+  @media(max-width:900px){
+    .sidebar{transform:translateX(-100%);transition:transform .25s}
+    .sidebar.open{transform:translateX(0)}
+    .main{margin-left:0}
+    .mobile-toggle{display:flex !important}
+  }
+  .mobile-toggle{display:none;position:fixed;top:14px;left:14px;z-index:110;
+    background:var(--panel);border:1px solid var(--line2);color:var(--amber);
+    width:32px;height:32px;border-radius:6px;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px}
+</style>
+</head>
+<body>
+<button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776;</button>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">GM</div>
+    <div>
+      <div class="sb-title">Global Macro<br>Trading Brain</div>
+      <div class="sb-sub">Terminal v2.0</div>
+    </div>
+  </div>
+  <nav class="sb-nav" id="sbNav">
+    <div class="sb-group">
+      <div class="sb-group-label">Overview</div>
+      <a class="sb-item active" data-tab="regime"><span class="dot"></span>Regime</a>
+      <a class="sb-item" data-tab="leading"><span class="dot"></span>Leading Indicators Strategy</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-label">Macro Analysis</div>
+      <a class="sb-item" data-tab="trends"><span class="dot"></span>Macro Trend Lab</a>
+      <a class="sb-item" data-tab="endo"><span class="dot"></span>US Endo Score</a>
+      <a class="sb-item" data-tab="bullbear"><span class="dot"></span>Bull / Bear Markets</a>
+      <a class="sb-item" data-tab="growth"><span class="dot"></span>Global Growth PMI</a>
+      <a class="sb-item" data-tab="cycle"><span class="dot"></span>Business Cycle</a>
+      <a class="sb-item" data-tab="pulse"><span class="dot"></span>Cross-Asset Z-Score</a>
+      <a class="sb-item" data-tab="cot"><span class="dot"></span>COT Positioning</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-label">Trading Tools</div>
+      <a class="sb-item" data-tab="watchlist"><span class="dot"></span>Trade Watchlist</a>
+      <a class="sb-item" data-tab="atr"><span class="dot"></span>ATR / Volatility</a>
+      <a class="sb-item" data-tab="vix"><span class="dot"></span>VIX Implied Move</a>
+      <a class="sb-item" data-tab="dist"><span class="dot"></span>Distribution</a>
+      <a class="sb-item" data-tab="spreads"><span class="dot"></span>Spread Trades</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-label">Risk &amp; Sizing</div>
+      <a class="sb-item" data-tab="beta"><span class="dot"></span>Beta &amp; Kelly Sizing</a>
+    </div>
+  </nav>
+  <div class="sb-footer">
+    Data through 26 Jun 2026<br>Refreshed 3 Jul 2026<br>Educational — not investment advice
+  </div>
+</aside>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">Regime</div>
+    <div class="topbar-meta">
+      <span class="meta-chip live">LIVE DATA</span>
+      <span class="meta-chip">15 MODULES</span>
+      <span class="meta-chip">6 PTMI ENGINES</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+  <!-- ============ REGIME ============ -->
+  <section class="section active" id="regime">
+    <div class="regime-banner">
+      <div class="rb-status"><div class="lab">Status</div><div class="ic">!</div></div>
+      <div class="txt">
+        <h2>Late-Cycle Reflation — risk-on, inflation re-accelerating</h2>
+        <p>Growth modest-but-positive (IP +1.7% YoY, GDPNow +3.0%), curve dis-inverted (+27bps 10s2s), credit tight (HY OAS 2.63) — yet CPI +4.3% &amp; PPI +13.1% signal a commodity-led inflation impulse. US endogenous score <b>+35</b> (Mildly Inflationary).</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Cross-asset macro snapshot — June 2026</h2>
+        <p class="hint">Live FRED + Yahoo data through May/Jun 2026. Source: <i>Macro Regime - Live (June 2026)</i>.</p>
+        <div class="kpi-row">
+          <div class="kpi"><div class="lab">Real GDP</div><div class="val">+2.7%</div><div class="delta pos">modest expansion</div></div>
+          <div class="kpi"><div class="lab">CPI YoY</div><div class="val neg">+4.3%</div><div class="delta neg">▲ re-accelerating</div></div>
+          <div class="kpi"><div class="lab">Core PCE</div><div class="val neg">+3.3%</div><div class="delta neg">sticky</div></div>
+          <div class="kpi"><div class="lab">PPI YoY</div><div class="val neg">+13.1%</div><div class="delta neg">pipeline hot</div></div>
+          <div class="kpi"><div class="lab">Fed Funds</div><div class="val">3.63%</div><div class="delta pos">−170bp from peak</div></div>
+          <div class="kpi"><div class="lab">10Y–2Y</div><div class="val pos">+27bp</div><div class="delta neu">dis-inverted</div></div>
+          <div class="kpi"><div class="lab">HY OAS</div><div class="val pos">2.63</div><div class="delta pos">tight, no stress</div></div>
+          <div class="kpi"><div class="lab">VIX</div><div class="val">18.4</div><div class="delta neu">calm</div></div>
+          <div class="kpi"><div class="lab">Unemployment</div><div class="val">4.3%</div><div class="delta neu">flat (duration up)</div></div>
+          <div class="kpi"><div class="lab">S&amp;P 500 YoY</div><div class="val pos">+25%</div><div class="delta pos">strong bull</div></div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="card">
+          <h2>Endogenous scorecards</h2>
+          <p class="hint">The Global Macros framework: each country's inflation/growth/risk mix → a single score &amp; regime label.</p>
+          <div class="chart-box"><canvas id="endoChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Implied portfolio tilt</h2>
+          <p class="hint">How the regime reads across asset classes.</p>
+          <table>
+            <tbody>
+              <tr><td><span class="cdot" style="background:#3b82f6"></span>Equities</td><td>Long <b>inflation-beneficiary cyclicals</b> (energy, materials, financials); UW long-duration growth &amp; bond proxies</td></tr>
+              <tr><td><span class="cdot" style="background:#f5a623"></span>Fixed Income</td><td>Short-to-neutral <b>duration</b>; favour front-end/cash &amp; TIPS over nominals</td></tr>
+              <tr><td><span class="cdot" style="background:#22c55e"></span>FX &amp; Commodities</td><td>Long <b>real assets</b> (energy, copper, precious metals — gold/silver crowded long)</td></tr>
+              <tr><td><span class="cdot" style="background:#ef4444"></span>USD</td><td>Mixed-to-soft (Fed easing vs sticky inflation); respect a hawkish-surprise squeeze</td></tr>
+              <tr><td><span class="cdot" style="background:#ef4444"></span>Fragility</td><td>Low VIX + tight credit + commodity-inflation = <b>"risk-on but inflation-fragile"</b> — most exposed to a hawkish surprise</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="src">Source: Global Macro Brain/09 - Synthesis/Macro Regime - Live (June 2026).md · FRED live data fetched 2026-07-03.</div>
+    </div>
+  </section>
+
+  <!-- ============ LEADING INDICATORS STRATEGY (NEW - from 8 Excel files) ============ -->
+  <section class="section" id="leading">
+    <div class="card">
+      <h2>Global Macro Strategy — built from 8 leading indicators (Jan 2021 → Jun 2026)</h2>
+      <p class="hint">Real historical trends from your indicator files (Retail Sales, CPI, UMCSI, Employment, ISM Mfg, Durable Goods, Real GDP, ISM Services). Each chart below shows the trend + the trade signal it generates. Together they form a composite macro score that drives positioning.</p>
+
+      <div class="kpi-row" style="margin-bottom:8px">
+        <div class="kpi"><div class="lab">Composite Macro Score</div><div class="val" id="liCompScore">—</div><div class="delta" id="liCompLabel">aggregating 8 signals</div></div>
+        <div class="kpi"><div class="lab">Bullish signals</div><div class="val pos" id="liBull">—</div><div class="delta pos">risk-on drivers</div></div>
+        <div class="kpi"><div class="lab">Bearish signals</div><div class="val neg" id="liBear">—</div><div class="delta neg">risk-off drivers</div></div>
+        <div class="kpi"><div class="lab">Net stance</div><div class="val" id="liNet" style="font-size:17px">—</div><div class="delta" id="liNetDesc">—</div></div>
+      </div>
+
+      <div class="gauge-bar" id="liGauge" style="margin:8px 0 16px"></div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr" id="liChartGrid"></div>
+
+      <h3>Indicator-by-indicator signal matrix</h3>
+      <div class="scroll-x">
+      <table id="liSignalTable">
+        <thead><tr><th>Indicator</th><th>Latest</th><th>3-mo ago</th><th>6-mo ago</th><th>1Y ago</th><th>Trend</th><th>Signal</th><th>Trade implication</th></tr></thead>
+        <tbody id="liSignalBody"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="note green" style="margin-top:16px">
+      <b>Composite macro read &amp; trade plan (Jun 2026):</b>
+      <ul class="clean" id="liTradePlan"></ul>
+    </div>
+    <div class="src">Source: 8 leading-indicator Excel files in raw/2. Macro Indicators/2.8 (Retail Sales, CPI, UMCSI, Employment, ISM Mfg, Durable Goods, GDP, ISM Services) — full history Jan 2021 → Jun 2026. Signals computed from 3/6/12-mo momentum + structural thresholds.</div>
+  </section>
+
+  <!-- ============ MACRO TREND LAB (NEW - from Excel) ============ -->
+  <section class="section" id="trends">
+    <div class="card">
+      <h2>Macro Trend Lab — US indicators 2020 → June 2026</h2>
+      <p class="hint">Live time series from <i>US Macro_data_Summary 2015 to 2026.xlsx</i> (78 monthly snapshots). Toggle indicators, spot patterns &amp; divergences, and read the trade implications. Last point = <b>Jun 2026</b>.</p>
+
+      <div class="field" style="max-width:500px">
+        <label>Select indicators to plot (multi-select)</label>
+        <select id="trendSel" multiple size="7" style="height:auto">
+          <option value="ff" selected>Fed Funds Rate</option>
+          <option value="y2">2Y Treasury</option>
+          <option value="y10" selected>10Y Treasury</option>
+          <option value="cv" selected>10Y–2Y Curve (bps)</option>
+          <option value="m3">3M T-Bill</option>
+          <option value="cpiyoy">CPI level</option>
+          <option value="unr">Unemployment %</option>
+          <option value="sent" selected>UMich Sentiment</option>
+          <option value="usd">USD Index (DTWEXBGS)</option>
+          <option value="oil" selected>WTI Oil ($)</option>
+          <option value="ism">ISM Manufacturing PMI</option>
+          <option value="nmi">ISM Services PMI (NMI)</option>
+          <option value="ip">Industrial Production</option>
+          <option value="baa">Baa–10Y spread</option>
+        </select>
+      </div>
+      <button class="btn" onclick="renderTrend()">Plot trend</button>
+      <button class="btn ghost" onclick="trendPreset('rates')">Rates cycle</button>
+      <button class="btn ghost" onclick="trendPreset('growth')">Growth/inflation</button>
+      <button class="btn ghost" onclick="trendPreset('risk')">Risk-off monitor</button>
+      <div class="chart-box" style="margin-top:14px"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="row2" style="margin-top:16px">
+      <div class="card">
+        <h3>Current vs 1-year ago — momentum read</h3>
+        <p class="hint">Latest (Jun 2026) vs Jun 2025. Δ = direction &amp; magnitude of change.</p>
+        <div class="scroll-x">
+        <table id="momentumTable">
+          <thead><tr><th>Indicator</th><th>Jun 2025</th><th>Jun 2026</th><th>Δ 1Y</th><th>Trend</th><th>Read</th></tr></thead>
+          <tbody id="momentumBody"></tbody>
+        </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Pattern &amp; divergence radar</h3>
+        <p class="hint">Patterns the data is screaming right now — the actionable signals.</p>
+        <table>
+          <tbody>
+            <tr><td><span class="cdot" style="background:#ef4444"></span><b>Curve re-flattening</b></td><td>10s2s +30bp now vs +74bp Jan — bull-flattening; growth-slowing signal building</td><td><span class="tag bear">Rates risk</span></td></tr>
+            <tr><td><span class="cdot" style="background:#f5a623"></span><b>Oil +19% YoY</b></td><td>$78.94 vs $66.3 — commodity-led inflation impulse feeding PPI</td><td><span class="tag long">Long oil/copper</span></td></tr>
+            <tr><td><span class="cdot" style="background:#ef4444"></span><b>Sentiment collapse</b></td><td>UMich 49.8 vs 52.2 — 2-yr low, diverges from strong equity tape</td><td><span class="tag watch">Consumer risk</span></td></tr>
+            <tr><td><span class="cdot" style="background:#3b82f6"></span><b>USD firm +4%</b></td><td>DXY 120.4 vs 115.6 — supports "short AUD/long USD" thesis</td><td><span class="tag short">Short AUD/EUR</span></td></tr>
+            <tr><td><span class="cdot" style="background:#22c55e"></span><b>ISM re-acceleration</b></td><td>Mfg 54.0 vs 48.8 — breakout above 50; cyclical upturn</td><td><span class="tag long">Long cyclicals</span></td></tr>
+            <tr><td><span class="cdot" style="background:#f5a623"></span><b>Sentiment vs ISM divergence</b></td><td>Hard data (ISM 54) strong, consumer (49.8) weak — late-cycle classic</td><td><span class="tag watch">Late-cycle</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="note green" style="margin-top:16px">
+      <b>Trade synthesis from the trend lab:</b> The <b>rates cycle has reversed</b> (FF cut from 4.33→3.63% but 10Y rose 4.24→4.50% — bear-steepening on inflation fear). <b>Oil +19% &amp; ISM 54</b> confirm the reflation-inflation read → long energy/materials/cyclicals, short duration. <b>Sentiment 49.8 vs ISM 54 divergence</b> is the classic late-cycle crack — keep hedges, don't chase consumer-facing names.
+    </div>
+    <div class="src">Source: US Macro_data_Summary 2015 to 2026.xlsx (raw/2. Macro Indicators/2.8) · 78 monthly snapshots Jan-2020 → Jun-2026.</div>
+  </section>
+
+  <!-- ============ US ENDO SCORE ENGINE (NEW - from Excel) ============ -->
+  <section class="section" id="endo">
+    <div class="card">
+      <h2>US Endogenous Driver Score — component breakdown</h2>
+      <p class="hint">From <i>26. USA_Endogenous_Driver_Analysis_New 2026.xlsx</i> 'Score Engine'. 17 drivers → weighted score. Current total: <b>+51 → STRONGLY INFLATIONARY</b> (auto-scored) vs +35 manual. Sliding scale: −150 (deflationary) to +150 (inflationary).</p>
+      <div class="kpi-row" style="margin-bottom:14px">
+        <div class="kpi"><div class="lab">Auto Endo Score</div><div class="val" style="color:var(--red)">+51</div><div class="delta neg">Strongly Inflationary</div></div>
+        <div class="kpi"><div class="lab">Leading Surveys</div><div class="val">+21</div><div class="delta neu">ISM/NMI/BP/UMCSI</div></div>
+        <div class="kpi"><div class="lab">Inflation block</div><div class="val neg">+15</div><div class="delta neg">CPI/PPI hot</div></div>
+        <div class="kpi"><div class="lab">Balance sheets</div><div class="val neg">+8</div><div class="delta neg">Debt/GDP 123%</div></div>
+        <div class="kpi"><div class="lab">Employment</div><div class="val pos">+3</div><div class="delta pos">NFP firm</div></div>
+        <div class="kpi"><div class="lab">Money Supply</div><div class="val neg">+4</div><div class="delta neg">M2 +5.4% YoY</div></div>
+      </div>
+      <div class="scroll-x">
+      <table id="endoTable">
+        <thead><tr><th>Code</th><th>Driver</th><th>Latest Date</th><th>Value</th><th>Auto Score</th><th>Prev Score</th><th>Δ</th><th>Trend bar</th></tr></thead>
+        <tbody id="endoBody"></tbody>
+      </table>
+      </div>
+      <div class="chart-box" style="margin-top:16px"><canvas id="endoCompChart"></canvas></div>
+    </div>
+    <div class="note" style="margin-top:16px">
+      <b>Reading the scorecard:</b> The auto-engine reads <b>+51 (Strongly Inflationary)</b> — hotter than the manual +35 because it weights the re-accelerating CPI (+6) and PPI Core (+6) more aggressively. The <b>dominant inflation impulse</b> (CPI +6, PPI +3, PPI-Core +6, M2 +4) totals +19 alone — overwhelming the modest growth signals. <b>Trade implication:</b> This is a <b>short-duration, long-real-assets</b> regime. The 8 points from balance-sheet stress (Debt/GDP 123%) add a USD-supportive fiscal-risk tailwind.
+    </div>
+    <div class="note blue" style="margin-top:12px">
+      <b>Component deep-dive (the standouts):</b>
+      <ul class="clean">
+        <li><b>UMCSI consumer sentiment → score +10</b> (was −5): biggest positive swing; sentiment at 49.8 scores as "deeply pessimistic" → contrarian-bullish per the scorecard.</li>
+        <li><b>PPI Core → +6</b> (was +4): pipeline inflation hottest; the leading edge of the commodity impulse.</li>
+        <li><b>Govt Debt/GDP → +10</b>: 122.6% ratio, max-score; sovereign/fiscal risk floor under USD &amp; gold.</li>
+        <li><b>Govt Interest/GDP → −10</b> (was −5): the offset — interest burden 3.1% of GDP is a growth drag.</li>
+      </ul>
+    </div>
+    <div class="src">Source: 26. USA_Endogenous_Driver_Analysis_New 2026.xlsx · 'Score Engine' &amp; 'Dashboard' sheets · data through May/Jun 2026. Note: IR% &amp; 4 Govt rows flagged STALE in source (fiscal data through Oct 2025).</div>
+  </section>
+
+  <!-- ============ BULL/BEAR ============ -->
+  <section class="section" id="bullbear">
+    <div class="card">
+      <h2>Major index bull/bear status — as of 26 June 2026</h2>
+      <p class="hint">Where each index sits vs its all-time high, distance to bear-market territory (−20%), historical bear base rates, and long-run CAGR.</p>
+      <div class="scroll-x">
+      <table id="bbTable">
+        <thead><tr><th>Index</th><th>Last (26 Jun)</th><th>All-time High</th><th>% off High</th><th>State</th><th>Dist. to Bear (−20%)</th><th>Median Bear Depth</th><th>Recovery (median days)</th><th>CAGR</th><th>10Y/Chart</th></tr></thead>
+        <tbody id="bbBody"></tbody>
+      </table>
+      </div>
+    </div>
+    <div class="row2" style="margin-top:16px">
+      <div class="card">
+        <h3>% off all-time high — by index</h3>
+        <div class="chart-box sm"><canvas id="offHighChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Long-run CAGR vs distance-to-bear</h3>
+        <div class="chart-box sm"><canvas id="cagrBearChart"></canvas></div>
+      </div>
+    </div>
+    <div class="note blue" style="margin-top:16px">
+      <b>Read:</b> 7 of 8 indices are in confirmed <b>BULL</b> markets; only Nasdaq 100 is in PULLBACK (−5.0% off high). DJIA &amp; Euro Stoxx 50 sit essentially <b>at all-time highs</b>. None are close to bear territory (all &gt;15% above the −20% line). Late-cycle, but no index flashing recession.
+    </div>
+    <div class="src">Source: bullbear_latest.json — generated 2026-07-03, price data through 2026-06-26.</div>
+  </section>
+
+  <!-- ============ GROWTH / PMI ============ -->
+  <section class="section" id="growth">
+    <div class="card">
+      <h2>Global growth pulse — Services/Manufacturing PMI</h2>
+      <p class="hint">11 economies, latest PMI vs 50-expansion line. <b>Global mean 50.3 · 64% expanding · "stalling"</b> — risk read mixed/neutral.</p>
+      <div class="kpi-row" style="margin-bottom:14px">
+        <div class="kpi"><div class="lab">Global mean PMI</div><div class="val">50.3</div><div class="delta neu">just above 50</div></div>
+        <div class="kpi"><div class="lab">Share expanding</div><div class="val">64%</div><div class="delta neu">7 of 11</div></div>
+        <div class="kpi"><div class="lab">US relative</div><div class="val">+0.5</div><div class="delta pos">US outperforming</div></div>
+        <div class="kpi"><div class="lab">Growth read</div><div class="val" style="font-size:17px;color:var(--amber)">Stalling</div><div class="delta neu">commodities still supportive</div></div>
+      </div>
+      <div class="chart-box"><canvas id="pmiChart"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>PMI trend — 24-month history by economy</h3>
+      <div class="chart-box"><canvas id="pmiTrend"></canvas></div>
+    </div>
+    <div class="note" style="margin-top:16px">
+      <b>FX implications (PTMI macro layer):</b> UK (48.7), France (48.3), Eurozone (47.7), Australia (43.6) all <b>contracting</b> → short GBP, short EUR, short AUD. US (50.7), Japan (50.0), Germany (54.4), Spain (55.9) expanding → USD/JPY strength bias, long DAX vs CAC.
+    </div>
+    <div class="src">Source: globalgrowth_latest.json — generated 2026-07-03, as_of 2026-07.</div>
+  </section>
+
+  <!-- ============ BUSINESS CYCLE ============ -->
+  <section class="section" id="cycle">
+    <div class="card">
+      <h2>Business cycle signal breadth — Leading / Coincident / Lagging</h2>
+      <p class="hint">A Leading/Coincident/Lagging monitor with a high-frequency liquidity block. Current breadth: <b>5 Bullish / 9 Bearish / 10 Neutral</b>.</p>
+      <div class="gauge-bar" style="margin:10px 0 16px">
+        <div style="background:var(--green);width:20.8%">Bull 5</div>
+        <div style="background:var(--muted);width:41.7%">Neutral 10</div>
+        <div style="background:var(--red);width:37.5%">Bear 9</div>
+      </div>
+      <div class="row2">
+        <div>
+          <h3 style="color:var(--red)">Leading indicators (next 3–6 mo)</h3>
+          <table>
+            <thead><tr><th>Indicator</th><th>Latest</th><th>Signal</th></tr></thead>
+            <tbody>
+              <tr><td>10Y–2Y curve</td><td class="mono">+27bp</td><td><span class="tag bear">Bear</span> flattening</td></tr>
+              <tr><td>ISM Mfg PMI</td><td class="mono">54.0</td><td><span class="tag bull">Bull</span> low-conf</td></tr>
+              <tr><td>Building Permits</td><td class="mono">1,413k</td><td><span class="tag bear">Bear</span> ▼</td></tr>
+              <tr><td>Housing Starts</td><td class="mono">1,177k</td><td><span class="tag bear">Bear</span> ▼▼ −15%</td></tr>
+              <tr><td>Initial Claims 4wk</td><td class="mono">223k</td><td><span class="tag neutral">Neutral→Bear</span></td></tr>
+              <tr><td>UMich Sentiment</td><td class="mono">49.8</td><td><span class="tag bear">Bear</span></td></tr>
+              <tr><td>M2 YoY</td><td class="mono">+4.72%</td><td><span class="tag bull">Bull</span> liquidity</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 style="color:var(--blue)">Coincident &amp; lagging</h3>
+          <table>
+            <thead><tr><th>Indicator</th><th>Latest</th><th>Signal</th></tr></thead>
+            <tbody>
+              <tr><td>Industrial Production</td><td class="mono">+1.67% YoY</td><td><span class="tag bull">Bull</span></td></tr>
+              <tr><td>Nonfarm Payrolls</td><td class="mono">+172k</td><td><span class="tag neutral">Neutral→Bull</span></td></tr>
+              <tr><td>Real Personal Income</td><td class="mono">−1.04% YoY</td><td><span class="tag bear">Bear</span> key crack</td></tr>
+              <tr><td>GDPNow</td><td class="mono">+3.04%</td><td><span class="tag neutral">Neutral</span></td></tr>
+              <tr><td>CPI Headline</td><td class="mono">+4.27% YoY</td><td><span class="tag bear">Bear</span> hot</td></tr>
+              <tr><td>Core PCE</td><td class="mono">+3.29% YoY</td><td><span class="tag bear">Bear</span> sticky</td></tr>
+              <tr><td>Unemp. Duration</td><td class="mono">26.0 wks</td><td><span class="tag bear">Bear</span> ▲</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <h3 style="margin-top:18px">High-frequency &amp; liquidity</h3>
+      <div class="kpi-row">
+        <div class="kpi"><div class="lab">Central Bank Net Liquidity</div><div class="val neg">$5.77T</div><div class="delta neg">▼ −$151B WoW</div></div>
+        <div class="kpi"><div class="lab">NFCI (fin. conditions)</div><div class="val pos">−0.51</div><div class="delta pos">loose, no stress</div></div>
+        <div class="kpi"><div class="lab">WEI real-time</div><div class="val pos">3.10</div><div class="delta pos">firm ~3% pace</div></div>
+        <div class="kpi"><div class="lab">Fed Funds bias</div><div class="val neg">Hawkish</div><div class="delta neg">easing stalled</div></div>
+      </div>
+      <div class="note" style="margin-top:14px">
+        <b>Conflicting-signal synthesis:</b> Leading indicators flag a <i>forward</i> slowdown (housing −15%, sentiment 49.8), but coincident labour/output are resilient and lagging inflation is hot. The economy is <b>not slowing yet</b> — the leading edge is cracking while inflation re-accelerates. Highest-conviction read = <b>inflation re-acceleration</b> (CPI/PCE/M2 agree).
+      </div>
+    </div>
+    <div class="src">Source: Business Cycle Dashboard - Live (June 2026).md · FRED + ISM, fetched 2026-06-19.</div>
+  </section>
+
+  <!-- ============ CROSS-ASSET Z-SCORE ============ -->
+  <section class="section" id="pulse">
+    <div class="card">
+      <h2>Cross-asset z-score monitor — "what's driving markets right now"</h2>
+      <p class="hint">Each macro instrument's move relative to its own trailing volatility (z-score). The <b>dominant variable</b> = largest |z|. Current read: <b>DXY at +2.5σ → "USD strength / tightening"</b>.</p>
+      <div id="zBars"></div>
+      <div class="legend" style="display:flex;gap:18px;font-size:11.5px;color:var(--muted);margin-top:8px;flex-wrap:wrap">
+        <span><b>|z|≥2</b> = abnormal</span><span><b>US10Y</b> Growth/Rates</span><span><b>DXY</b> Liquidity</span><span><b>Oil</b> Fear/real-yields</span><span><b>SPY/QQQ</b> Risk</span><span><b>VIX</b> Fear</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>The honest study — does an abnormal move predict forward returns?</h2>
+      <p class="hint">Forward 10-day return after a |z|≥2 shock vs baseline. Most "abnormal→reversion" bets do NOT work.</p>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Signal</th><th>n</th><th>Fwd 10d</th><th>Edge (pp)</th><th>t-stat</th><th>Hit %</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>SPY abnormal down</td><td>236</td><td class="mono">+0.08%</td><td class="mono neg">−0.20</td><td class="mono">+0.3</td><td>55%</td><td><span class="tag neutral">No edge</span></td></tr>
+          <tr><td>SPY abnormal up</td><td>152</td><td class="mono">−0.24%</td><td class="mono neg">−0.52</td><td class="mono">−0.6</td><td>57%</td><td><span class="tag neutral">No edge</span></td></tr>
+          <tr><td>QQQ abnormal down</td><td>237</td><td class="mono">+0.21%</td><td class="mono neg">−0.16</td><td class="mono">+0.7</td><td>56%</td><td><span class="tag neutral">No edge</span></td></tr>
+          <tr><td><b>VIX fear spike → SPY</b></td><td><b>276</b></td><td class="mono pos"><b>+0.55%</b></td><td class="mono pos"><b>+0.27</b></td><td class="mono pos"><b>+2.4</b></td><td><b>61%</b></td><td><span class="tag bull">Only real edge</span></td></tr>
+          <tr><td>DXY surge → SPY</td><td>190</td><td class="mono">+0.29%</td><td class="mono">+0.01</td><td class="mono">+1.3</td><td>58%</td><td><span class="tag neutral">Weak</span></td></tr>
+          <tr><td>US10Y rate shock → SPY</td><td>217</td><td class="mono">+0.33%</td><td class="mono">+0.05</td><td class="mono">+1.6</td><td>63%</td><td><span class="tag neutral">Weak</span></td></tr>
+          <tr><td>Oil abnormal → Oil</td><td>388</td><td class="mono">−1.06%</td><td class="mono neg">−1.42</td><td class="mono">−1.3</td><td>51%</td><td><span class="tag neutral">No edge</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note blue" style="margin-top:12px">
+        <b>The one tradable edge — "buy the fear":</b> Long SPY for 10 days after a VIX fear-spike cuts drawdown by ~20pts (−34.8% vs −56.5% buy&amp;hold) but trails on return — a <b>defensive risk-reducer</b>, not an alpha engine. <i>Caveat:</i> Bonferroni ×7 takes p from 0.015 → 0.106; directionally plausible, not multiplicity-robust.
+      </div>
+    </div>
+    <div class="src">Source: Macro Pulse — Cross-Asset Z-Score Monitor (June 2026).md · free Yahoo daily 2000–Jun 2026, adversarially audited 2026-06-21.</div>
+  </section>
+
+  <!-- ============ COT POSITIONING ============ -->
+  <section class="section" id="cot">
+    <div class="card">
+      <h2>CFTC Commitment of Traders — week of 9 June 2026</h2>
+      <p class="hint">Non-commercial "Flip" = %long − %short. Crowded positioning = reversion risk. PTMI combines this with the endo/exo scorecards before sizing.</p>
+      <div class="chart-box"><canvas id="cotChart"></canvas></div>
+    </div>
+    <div class="row3" style="margin-top:16px">
+      <div class="card"><h3 style="color:var(--green)">Crowded long (fade risk)</h3>
+        <ul class="clean"><li><b>Gold +52%</b> — heavy net-long, inflation hedge bid</li><li><b>Silver +22%</b> — confirms metals bid</li><li><b>AUD +6%</b> — mildly long vs framework's short bias</li></ul></div>
+      <div class="card"><h3 style="color:var(--red)">Crowded short (squeeze risk)</h3>
+        <ul class="clean"><li><b>Yen −29%</b> — short-yen carry alive</li><li><b>GBP −22%</b> — bearish sterling</li><li><b>VIX −18%</b> — structural net-short vol</li><li><b>10Y −16%</b>, <b>S&amp;P −9%</b>, <b>NatGas −12%</b></li></ul></div>
+      <div class="card"><h3 style="color:var(--blue)">Roughly flat</h3>
+        <ul class="clean"><li><b>WTI +7%</b>, <b>USD +3%</b></li><li><b>EUR +2%</b></li><li><b>NASDAQ −0.4%</b> — specs neutral vs S&amp;P net-short</li></ul></div>
+    </div>
+    <div class="note" style="margin-top:16px">
+      <b>PTMI read:</b> Gold/silver crowded long = respect but don't chase; yen/GBP crowded short = squeeze-susceptible (matches framework's short AUD vs crowded-AUD-long tension); VIX net-short + low realized = complacency-plus-fragility — the configuration most exposed to a hawkish surprise.
+    </div>
+    <div class="src">Source: Macro Regime - Live (June 2026).md · CFTC COT, week of 2026-06-09.</div>
+  </section>
+
+  <!-- ============ WATCHLIST ============ -->
+  <section class="section" id="watchlist">
+    <div class="card">
+      <h2>Trade-idea watchlist — calibrated to June-2026 data</h2>
+      <p class="hint">Ideas derived from the macro regime + PMI divergence + COT + PTMI methodology. Prices = <b>real 26-Jun-2026 closes</b>. <b>Edit</b> any price to recompute ATR stop &amp; target.</p>
+      <div class="scroll-x">
+      <table id="wlTable">
+        <thead><tr><th>Asset</th><th>Class</th><th>Theme (macro driver)</th><th>Bias</th>
+          <th>Edit Price</th><th>ATR %</th><th>1×ATR Stop</th><th>Target (2R)</th><th>Conv.</th><th>Catalyst / logic</th></tr></thead>
+        <tbody id="wlBody"></tbody>
+      </table>
+      </div>
+    </div>
+    <div class="row2" style="margin-top:16px">
+      <div class="card"><h3>Conviction breakdown</h3><div class="chart-box sm"><canvas id="convChart"></canvas></div></div>
+      <div class="card"><h3>Bias by asset class</h3><div class="chart-box sm"><canvas id="classChart"></canvas></div></div>
+    </div>
+    <div class="src">Prices: bullbear_latest.json (26-Jun-2026). ATR%/conviction: analyst synthesis from Macro Regime, PMI &amp; COT.</div>
+  </section>
+
+  <!-- ============ ATR ============ -->
+  <section class="section" id="atr">
+    <div class="card">
+      <h2>Average True Range — stop &amp; sizing engine (PTMI Video 7)</h2>
+      <p class="hint">TR = max(H−L, |H−PrevClose|, |L−PrevClose|). ATR via Wilder smoothing. PTMI uses 1×ATR as the minimum stop.</p>
+      <div class="row3">
+        <div class="field"><label>Asset label</label><input id="atrName" value="S&P 500 (SPX)"></div>
+        <div class="field"><label>Current price</label><input id="atrPrice" type="number" value="7354" step="0.01"></div>
+        <div class="field"><label>ATR period (days)</label><input id="atrPeriod" type="number" value="14"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Today's High</label><input id="atrH" type="number" value="7402" step="0.01"></div>
+        <div class="field"><label>Today's Low</label><input id="atrL" type="number" value="7310" step="0.01"></div>
+        <div class="field"><label>Previous Close</label><input id="atrPC" type="number" value="7360" step="0.01"></div>
+      </div>
+      <div class="field"><label>Prior ATR (for Wilder smoothing)</label><input id="atrPrev" type="number" value="92" step="0.01"></div>
+      <button class="btn" onclick="calcATR()">Calculate</button>
+      <div class="row4" style="margin-top:12px">
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Today's True Range</div><div class="big mono" id="trOut">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">New ATR</div><div class="big mono" id="atrOut">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">ATR % of price</div><div class="big mono" id="atrPct">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">1×ATR Stop (long)</div><div class="big mono pos" id="atrStop">—</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Comparative volatility — ATR% across the watchlist</h3>
+      <div class="chart-box"><canvas id="atrCompare"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ============ VIX ============ -->
+  <section class="section" id="vix">
+    <div class="card">
+      <h2>VIX-implied S&amp;P 500 move (PTMI Video 6)</h2>
+      <p class="hint"><span class="mono">Expected ±% = VIX / √(365 / days)</span>. With VIX at 18.4 (June 2026), options price a modest band.</p>
+      <div class="row3">
+        <div class="field"><label>VIX level</label><input id="vixLvl" type="number" value="18.4" step="0.01"></div>
+        <div class="field"><label>Days to horizon</label><input id="vixDays" type="number" value="30"></div>
+        <div class="field"><label>S&amp;P 500 level</label><input id="vixSP" type="number" value="7354" step="0.01"></div>
+      </div>
+      <button class="btn" onclick="calcVIX()">Calculate implied move</button>
+      <div class="out" style="margin-top:12px">
+        <div style="font-size:11px;color:var(--muted)">Implied ± move over <span id="vixD2">30</span> days</div>
+        <div class="big mono"><span id="vixPct">—</span> ≈ <span id="vixPts">—</span> points</div>
+        <div style="margin-top:6px;color:var(--muted);font-size:12px">Range: <span class="pos mono" id="vixUp">—</span> → <span class="neg mono" id="vixDn">—</span></div>
+      </div>
+      <div class="chart-box sm" style="margin-top:18px"><canvas id="vixChart"></canvas></div>
+      <div class="note blue" style="margin-top:14px">
+        <b>June-2026 read:</b> VIX 18.4 → ~±5.1% on SPX over 30 days (~7,730 / ~6,978). The complacency-plus-fragility setup (VIX net-short + tight credit + re-accelerating inflation) means <b>vol is cheap to buy</b> — consider tail hedges into CPI/FOMC.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DISTRIBUTION ============ -->
+  <section class="section" id="dist">
+    <div class="card">
+      <h2>Distribution of returns — edge &amp; tails (PTMI Video 4)</h2>
+      <p class="hint">Daily-return histogram vs normal curve. Fat left tails → avoid naked longs / buy protection.</p>
+      <div class="row3">
+        <div class="field"><label>Asset</label>
+          <select id="distSel">
+            <option value="spx">S&amp;P 500</option><option value="ndx">Nasdaq 100</option>
+            <option value="ftse">FTSE 100</option><option value="dax">DAX 40</option>
+            <option value="eur">EUR/USD</option><option value="gbp">GBP/USD</option>
+            <option value="jpy">USD/JPY</option><option value="wti">WTI Crude</option>
+            <option value="gold">Gold</option>
+          </select>
+        </div>
+        <div class="field"><label>Mean daily return %</label><input id="dMean" type="number" value="0.04" step="0.001"></div>
+        <div class="field"><label>Std dev (daily) %</label><input id="dStd" type="number" value="1.05" step="0.001"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Skewness (− = left tail)</label><input id="dSkew" type="number" value="-0.6" step="0.01"></div>
+        <div class="field"><label>Excess kurtosis</label><input id="dKurt" type="number" value="4.2" step="0.01"></div>
+        <div class="field"><label>Sample years</label><input id="dYrs" type="number" value="20"></div>
+      </div>
+      <button class="btn" onclick="calcDist()">Draw distribution</button>
+      <div class="row2" style="margin-top:14px">
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Verdict</div><div class="big" id="dVerdict" style="font-size:18px">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">PTMI implication</div><div id="dImpl" style="color:var(--muted);font-size:12.5px;margin-top:6px">—</div></div>
+      </div>
+      <div class="chart-box" style="margin-top:14px"><canvas id="distChart"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ============ SPREADS ============ -->
+  <section class="section" id="spreads">
+    <div class="card">
+      <h2>Spread / pair trades — isolate alpha, kill beta (PTMI Video 18)</h2>
+      <p class="hint">Long the stronger, short the weaker, beta- or $-neutral. Spread = Long − Short price.</p>
+      <div class="row3">
+        <div class="field"><label>Long leg</label><input id="spLname" value="Goldman Sachs (GS)"></div>
+        <div class="field"><label>Long price</label><input id="spLprice" type="number" value="640" step="0.01"></div>
+        <div class="field"><label>Long beta</label><input id="spLbeta" type="number" value="1.35" step="0.01"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Short leg</label><input id="spSname" value="JPMorgan (JPM)"></div>
+        <div class="field"><label>Short price</label><input id="spSprice" type="number" value="285" step="0.01"></div>
+        <div class="field"><label>Short beta</label><input id="spSbeta" type="number" value="1.15" step="0.01"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Capital ($)</label><input id="spCap" type="number" value="20000"></div>
+        <div class="field"><label>Hedge mode</label><select id="spMode"><option value="beta">Beta-neutral</option><option value="dollar">$-neutral</option></select></div>
+        <div class="field"><label>Spread history mean</label><input id="spMean" type="number" value="320" step="0.01"></div>
+      </div>
+      <button class="btn" onclick="calcSpread()">Build spread</button>
+      <div class="row4" style="margin-top:12px">
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Current spread</div><div class="big mono" id="spNow">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">vs mean</div><div class="big mono" id="spVsMean">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Long shares</div><div class="big mono pos" id="spLsh">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Short shares</div><div class="big mono neg" id="spSsh">—</div></div>
+      </div>
+      <div class="note green" style="margin-top:14px">
+        <b>June-2026 spread ideas:</b>
+        <ul class="clean">
+          <li><b>Long GS / short JPM</b> — classic PTMI example; trade the spread, not the tape.</li>
+          <li><b>Long US banks &amp; energy / short EU banks</b> — divergent growth (US PMI 50.7 vs EZ 47.7), reflation favours cyclicals.</li>
+          <li><b>Long DAX / short CAC</b> — Germany (54.4) expanding, France (48.3) contracting.</li>
+          <li><b>Long copper &amp; oil / short gold</b> — fade the crowded gold long (+52%) into reflation; OR the inverse if a hawkish surprise hits.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BETA / KELLY ============ -->
+  <section class="section" id="beta">
+    <div class="card">
+      <h2>Beta hedge &amp; Kelly sizing (PTMI Videos 23–24)</h2>
+      <h3>A. Beta-neutral pair</h3>
+      <div class="row3">
+        <div class="field"><label>Total $ for pair</label><input id="bhCap" type="number" value="20000"></div>
+        <div class="field"><label>Long ticker</label><input id="bhL" value="CVX"></div>
+        <div class="field"><label>Long beta</label><input id="bhLb" type="number" value="1.32" step="0.01"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Long price</label><input id="bhLp" type="number" value="120.33" step="0.01"></div>
+        <div class="field"><label>Short ticker</label><input id="bhS" value="AZN"></div>
+        <div class="field"><label>Short beta</label><input id="bhSb" type="number" value="1.12" step="0.01"></div>
+      </div>
+      <div class="field"><label>Short price</label><input id="bhSp" type="number" value="51.06" step="0.01"></div>
+      <button class="btn" onclick="calcBeta()">Beta-hedge</button>
+      <div class="row4" style="margin-top:12px">
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Ratio (S/L β)</div><div class="big mono" id="bhRatio">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">$ to Long</div><div class="big mono pos" id="bhLd">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">$ to Short</div><div class="big mono neg" id="bhSd">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">L / S shares</div><div class="big mono" id="bhSh" style="font-size:16px">—</div></div>
+      </div>
+
+      <h3 style="margin-top:24px">B. Kelly Criterion</h3>
+      <div class="row3">
+        <div class="field"><label>Win rate (0–1)</label><input id="kW" type="number" value="0.55" step="0.01"></div>
+        <div class="field"><label>Avg win $</label><input id="kWd" type="number" value="12000"></div>
+        <div class="field"><label>Avg loss $</label><input id="kLd" type="number" value="6500"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>Account equity ($)</label><input id="kEq" type="number" value="100000"></div>
+        <div class="field"><label>Fraction of Kelly (0.5 = half)</label><input id="kFrac" type="number" value="0.5" step="0.1"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn" onclick="calcKelly()" style="width:100%">Compute</button></div>
+      </div>
+      <div class="row4" style="margin-top:12px">
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Payoff R</div><div class="big mono" id="kR">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Full Kelly %</div><div class="big mono" id="kFull">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">Fractional Kelly %</div><div class="big mono" id="kUsed">—</div></div>
+        <div class="out"><div style="font-size:11px;color:var(--muted)">$ per trade</div><div class="big mono pos" id="kDollar">—</div></div>
+      </div>
+      <div class="note blue" style="margin-top:14px">
+        <b>LVDTA note (Million Dollar Traders course):</b> Lex van Dam's algorithm uses <span class="mono">f = [W − (1−W)/R] × 0.25</span>, clamped 0.25–2% risk per trade, with a 12-unit portfolio cap. For the live June-2026 regime (mixed signals), this self-aware sizing prescribes ~<b>0.45% risk per trade</b> vs the 1% naive baseline.
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <b>Sources:</b> Global Macro Brain/09 - Synthesis (Macro Regime, Business Cycle, Macro Pulse, AI Analyst Committee, Trading System, Million Dollar Traders — all June/July 2026) · bullbear_latest.json &amp; globalgrowth_latest.json (data through 26 Jun 2026) · PTMI Videos 4, 6, 7, 13–24. <br>
+    Every macro figure is live (FRED + Yahoo + CFTC, refreshed 3 Jul 2026). Watchlist prices are real 26-Jun-2026 closes; ATR%/conviction are analyst synthesis. Educational tool, not investment advice.
+  </footer>
+  </div><!-- /.content -->
+</div><!-- /.main -->
+
+<script>
+/* ===================== TAB SWITCHING (sidebar) ===================== */
+const TAB_LABELS={regime:'Regime',leading:'Leading Indicators Strategy',trends:'Macro Trend Lab',endo:'US Endogenous Score',bullbear:'Bull / Bear Markets',growth:'Global Growth PMI',cycle:'Business Cycle',pulse:'Cross-Asset Z-Score',cot:'COT Positioning',watchlist:'Trade Watchlist',atr:'ATR / Volatility',vix:'VIX Implied Move',dist:'Distribution of Returns',spreads:'Spread Trades',beta:'Beta & Kelly Sizing'};
+document.querySelectorAll('.sb-item').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const tab=b.dataset.tab;
+    document.getElementById(tab).classList.add('active');
+    document.getElementById('topbarTitle').textContent=TAB_LABELS[tab]||tab;
+    document.querySelector('.sidebar').classList.remove('open');
+    setTimeout(()=>{window.dispatchEvent(new Event('resize'))},50);
+  };
+});
+
+/* ===================== LIVE DATA: BULL/BEAR ===================== */
+const BB={
+ "S&P 500":{last:7354.0,date:"2026-06-26",high:7609.8,off:-3.4,state:"BULL",toBear:-17.2,medDepth:-33.5,medRecov:646,cagr:6.3,span:98.5},
+ "Nasdaq 100":{last:29118.2,date:"2026-06-26",high:30660.6,off:-5.0,state:"PULLBACK",toBear:-15.8,medDepth:-28.0,medRecov:173,cagr:14.6,span:40.8},
+ "DJIA":{last:51876.1,date:"2026-06-26",high:51999.7,off:-0.2,state:"BULL (at highs)",toBear:-19.8,medDepth:-37.1,medRecov:1707,cagr:8.6,span:31.5},
+ "Euro Stoxx 50":{last:6221.5,date:"2026-06-26",high:6323.3,off:-1.6,state:"BULL (at highs)",toBear:-18.7,medDepth:-34.1,medRecov:921,cagr:5.0,span:39.5},
+ "FTSE 100":{last:10508.0,date:"2026-06-26",high:10910.6,off:-3.7,state:"BULL",toBear:-16.9,medDepth:-35.9,medRecov:806,cagr:5.7,span:42.5},
+ "DAX 40":{last:24671.2,date:"2026-06-26",high:25420.7,off:-2.9,state:"BULL",toBear:-17.6,medDepth:-33.0,medRecov:609,cagr:8.7,span:38.5},
+ "Nikkei 225":{last:69360.9,date:"2026-06-26",high:72366.3,off:-4.2,state:"BULL",toBear:-16.5,medDepth:-21.1,medRecov:372,cagr:6.7,span:61.5},
+ "ASX 200":{last:8764.2,date:"2026-06-26",high:9198.6,off:-4.7,state:"BULL",toBear:-16.0,medDepth:-22.8,medRecov:476,cagr:4.9,span:34.1}
+};
+function bbStateTag(s){
+  if(s.includes("PULLBACK"))return '<span class="tag watch">PULLBACK</span>';
+  if(s.includes("BULL"))return '<span class="tag bull">BULL</span>';
+  return '<span class="tag bear">BEAR</span>';
+}
+function renderBB(){
+  const tb=document.getElementById('bbBody');
+  tb.innerHTML=Object.entries(BB).map(([k,r])=>{
+    const cagrCol=r.cagr>=8?'pos':r.cagr<5.5?'neg':'neu';
+    return `<tr>
+      <td><b>${k}</b></td>
+      <td class="mono">${r.last.toLocaleString()}</td>
+      <td class="mono">${r.high.toLocaleString()}</td>
+      <td class="mono neg">${r.off}%</td>
+      <td>${bbStateTag(r.state)}</td>
+      <td class="mono">${r.toBear}%</td>
+      <td class="mono neg">${r.medDepth}%</td>
+      <td class="mono">${r.medRecov}d</td>
+      <td class="mono ${cagrCol}">${r.cagr}%</td>
+      <td><button class="btn ghost" style="padding:4px 10px;font-size:11px" onclick="alert('${k}\\nSpan: ${r.span} yrs\\nBears studied: see JSON')">details</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ===================== LIVE DATA: PMI ===================== */
+const PMI=[
+  {code:"ES",label:"Spain",pmi:55.9,prev:55.8,dir:0.1,exp:true,big4:false},
+  {code:"DE",label:"Germany",pmi:54.4,prev:55.7,dir:-1.3,exp:true,big4:false},
+  {code:"CH",label:"Switzerland",pmi:52.9,prev:53.5,dir:-0.6,exp:true,big4:false},
+  {code:"IT",label:"Italy",pmi:50.8,prev:48.8,dir:2.0,exp:true,big4:false},
+  {code:"US",label:"United States",pmi:50.7,prev:51.0,dir:-0.3,exp:true,big4:true},
+  {code:"JP",label:"Japan",pmi:50.0,prev:48.7,dir:1.3,exp:true,big4:true},
+  {code:"CN",label:"China",pmi:50.0,prev:50.3,dir:-0.3,exp:true,big4:false},
+  {code:"UK",label:"United Kingdom",pmi:48.7,prev:49.3,dir:-0.6,exp:false,big4:true},
+  {code:"FR",label:"France",pmi:48.3,prev:48.4,dir:-0.1,exp:false,big4:false},
+  {code:"EZ",label:"Eurozone",pmi:47.7,prev:47.6,dir:0.1,exp:false,big4:true},
+  {code:"AU",label:"Australia",pmi:43.6,prev:45.5,dir:-1.9,exp:false,big4:true}
+];
+const PMI_HIST={
+  US:[57.3,52.8,53.6,53.3,52.7,53.0,52.9,52.0,52.6,49.3,55.9,55.7,56.7,53.3,55.3,55.0,58.0,61.0,60.8,59.5,58.9,57.1,51.0,50.7],
+  EZ:[48.6,47.9,46.4,47.0,47.2,48.3,49.8,50.7,52.2,51.6,51.2,51.0,51.6,52.6,52.2,53.1,53.2,52.8,54.2,53.1,52.4,52.3,47.6,47.7],
+  UK:[52.9,54.9,56.9,60.2,60.5,60.3,62.5,60.0,58.8,58.3,58.2,57.6,58.7,58.6,57.7,59.1,60.5,58.7,56.2,58.6,50.5,52.7,49.3,48.7],
+  AU:[47.1,46.3,45.4,48.5,49.6,44.1,40.6,41.5,39.4,39.0,47.1,47.9,48.9,46.1,49.3,55.2,48.9,48.6,49.9,47.6,49.3,49.4,45.5,43.6],
+  JP:[50.1,50.4,51.3,53.4,52.5,54.8,52.1,50.6,51.2,53.0,55.3,51.8,52.1,51.2,49.3,52.2,46.4,49.3,49.0,50.4,49.9,52.5,48.7,50.0],
+  CN:[49.5,49.4,49.1,49.8,50.1,50.3,50.1,49.1,50.2,50.5,49.0,49.5,49.7,49.3,49.4,49.8,49.0,49.2,50.1,49.3,49.0,50.4,50.3,50.0]
+};
+
+/* ===================== LIVE DATA: Z-SCORES ===================== */
+const ZSCORES=[
+  {inst:"DXY",driver:"Liquidity",z:2.5,tradable:true},
+  {inst:"US10Y",driver:"Growth/Rates",z:1.4,tradable:false},
+  {inst:"Oil (WTI)",driver:"Fear/real-yields",z:1.2,tradable:true},
+  {inst:"VIX",driver:"Fear",z:-1.0,tradable:false},
+  {inst:"SPY",driver:"Risk appetite",z:0.6,tradable:true},
+  {inst:"US3M",driver:"Fed exp.",z:0.4,tradable:false},
+  {inst:"QQQ",driver:"Growth/liquidity",z:-0.3,tradable:true}
+];
+function renderZBars(){
+  const max=Math.max(...ZSCORES.map(z=>Math.abs(z.z)));
+  document.getElementById('zBars').innerHTML=ZSCORES.map(z=>{
+    const pct=Math.abs(z.z)/max*50; // 50% of half-width
+    const left = z.z>=0 ? 50 : 50-pct;
+    const col = Math.abs(z.z)>=2 ? (z.z>0?'var(--red)':'var(--green)') : (Math.abs(z.z)>=1?'var(--amber)':'var(--muted)');
+    const dom = Math.abs(z.z)===Math.max(...ZSCORES.map(x=>Math.abs(x.z))) ? ' &middot; DOMINANT' : '';
+    return `<div style="margin:8px 0">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px"><span><b>${z.inst}</b> <span style="color:var(--muted);font-size:11px">${z.driver}</span></span><span class="mono" style="color:${col};font-weight:700">${z.z>=0?'+':''}${z.z.toFixed(1)}σ${dom}</span></div>
+      <div class="zbar"><i style="left:${left}%;background:${col}"></i></div>
+    </div>`;
+  }).join('');
+  // add center line marker via css pseudo — handled by inline
+}
+
+/* ===================== LIVE DATA: COT ===================== */
+const COT=[
+  {inst:"Gold",flip:52},{inst:"Silver",flip:22},{inst:"AUD",flip:6},
+  {inst:"WTI",flip:7},{inst:"USD",flip:3},{inst:"EUR",flip:2},{inst:"NASDAQ",flip:-0.4},
+  {inst:"S&P 500",flip:-9},{inst:"NatGas",flip:-12},{inst:"10Y T-Note",flip:-16},
+  {inst:"VIX",flip:-18},{inst:"GBP",flip:-22},{inst:"JPY",flip:-29}
+];
+
+/* ===================== WATCHLIST (June-2026 calibrated) ===================== */
+const WL=[
+  {a:'S&P 500 (SPX)',cls:'Index',theme:'Late-cycle reflation, AI capex',bias:'Long',price:7354,atrpct:1.05,conv:3,cat:'Equity',why:'+25% YoY bull; long cyclicals/energy/materials'},
+  {a:'Nasdaq 100 (NDX)',cls:'Index',theme:'Mega-cap tech / AI',bias:'Watch',price:29118,atrpct:1.35,conv:2,cat:'Equity',why:'In pullback (−5%); UW long-duration growth into hot CPI'},
+  {a:'DJIA',cls:'Index',theme:'Cyclicals / industrials',bias:'Long',price:51876,atrpct:0.90,conv:3,cat:'Equity',why:'At all-time highs; reflation favours value/cyclicals'},
+  {a:'Euro Stoxx 50',cls:'Index',theme:'EU exporters, EZ PMI 47.7',bias:'Short',price:6221,atrpct:1.10,conv:3,cat:'Equity',why:'EZ contracting; EUR weakness is a tailwind but growth drag wins'},
+  {a:'FTSE 100',cls:'Index',theme:'UK value / energy weighting',bias:'Watch',price:10508,atrpct:0.95,conv:2,cat:'Equity',why:'UK PMI 48.7 contracting; defensive yield offsets'},
+  {a:'DAX 40',cls:'Index',theme:'German exporters, DE PMI 54.4',bias:'Long',price:24671,atrpct:1.15,conv:3,cat:'Equity',why:'Germany expanding; long DAX / short CAC spread'},
+  {a:'Nikkei 225',cls:'Index',theme:'JPY weakness / BoJ',bias:'Long',price:69361,atrpct:1.25,conv:3,cat:'Equity',why:'JPY −29% crowded short = equity tailwind; BoJ policy risk'},
+  {a:'EUR/USD',cls:'FX',theme:'ECB-Fed divergence, EZ weak',bias:'Short',price:1.0820,atrpct:0.45,conv:4,cat:'FX',why:'EZ PMI 47.7 vs US 50.7; rate diff favours USD'},
+  {a:'GBP/USD',cls:'FX',theme:'UK recession risk',bias:'Short',price:1.2700,atrpct:0.50,conv:3,cat:'FX',why:'UK PMI 48.7; GBP −22% crowded short (squeeze risk)'},
+  {a:'USD/JPY',cls:'FX',theme:'Carry trade, BoJ',bias:'Watch',price:152.50,atrpct:0.60,conv:2,cat:'FX',why:'JPY crowded short; intervention tail — pair only'},
+  {a:'AUD/USD',cls:'FX',theme:'China PMI proxy, AU PMI 43.6',bias:'Short',price:0.6550,atrpct:0.70,conv:5,cat:'FX',why:'AU PMI 43.6 deep contraction; framework exo score −6'},
+  {a:'USD/CAD',cls:'FX',theme:'Oil / BoC path',bias:'Long',price:1.3650,atrpct:0.55,conv:3,cat:'FX',why:'Weak crude + dovish BoC vs Fed hold'},
+  {a:'WTI Crude',cls:'Commodity',theme:'Reflation, +29% YoY',bias:'Long',price:85.0,atrpct:2.10,conv:4,cat:'Commodity',why:'Commodity-led inflation impulse; demand firm'},
+  {a:'Copper',cls:'Commodity',theme:'+41% YoY, reflation engine',bias:'Long',price:4.35,atrpct:2.00,conv:4,cat:'Commodity',why:'IP +1.7%; inflation-beneficiary cyclical'},
+  {a:'Gold',cls:'Commodity',theme:'Real-asset / inflation hedge',bias:'Watch',price:3380,atrpct:1.40,conv:2,cat:'Commodity',why:'Bullish thesis but +52% crowded long — respect, don\'t chase'},
+  {a:'Silver',cls:'Commodity',theme:'Industrial + precious',bias:'Long',price:38.50,atrpct:2.30,conv:3,cat:'Commodity',why:'Confirms metals bid; less crowded than gold'},
+  {a:'US 10Y Yield',cls:'Rates',theme:'Duration, sticky PCE',bias:'Short',price:4.48,atrpct:1.80,conv:3,cat:'Rates',why:'CPI +4.3% caps duration; short-to-neutral duration'},
+  {a:'USD Index (DXY)',cls:'FX',theme:'+2.5σ dominant variable',bias:'Long',price:104.50,atrpct:0.40,conv:3,cat:'FX',why:'Z-score dominant; hawkish-surprise squeeze risk'}
+];
+
+function convStars(n){let s='<span class="strength">';for(let i=1;i<=5;i++){const c=i<=n?(n>=4?'hi':'on'):'';s+=`<i class="${c}"></i>`}return s+'</span>';}
+function biasTag(b){const c=b==='Long'?'long':b==='Short'?'short':'watch';return `<span class="tag ${c}">${b}</span>`;}
+function renderWL(){
+  const tb=document.getElementById('wlBody');
+  tb.innerHTML=WL.map((r,i)=>{
+    const atr=r.price*r.atrpct/100;
+    const ls=r.bias==='Long'?1:r.bias==='Short'?-1:0;
+    const stop=r.price-ls*atr, tgt=r.price+ls*atr*2;
+    const dec=r.price<10?4:r.price<1000?2:0;
+    const stopStr=r.bias==='Watch'?'—':stop.toFixed(dec);
+    const tgtStr=r.bias==='Watch'?'—':tgt.toFixed(dec);
+    return `<tr>
+      <td><b>${r.a}</b></td><td>${r.cls}</td>
+      <td style="color:var(--muted);font-size:12px">${r.theme}</td>
+      <td>${biasTag(r.bias)}</td>
+      <td><input type="number" step="0.0001" value="${r.price}" data-i="${i}" class="priceIn" style="width:100px"></td>
+      <td class="mono">${r.atrpct.toFixed(2)}%</td>
+      <td class="mono ${r.bias==='Long'?'pos':r.bias==='Short'?'neg':''}">${stopStr}</td>
+      <td class="mono">${tgtStr}</td>
+      <td>${convStars(r.conv)}</td>
+      <td style="color:var(--muted);font-size:11.5px">${r.why}</td>
+    </tr>`;
+  }).join('');
+  document.querySelectorAll('.priceIn').forEach(inp=>{
+    inp.oninput=e=>{const i=+e.target.dataset.i,v=parseFloat(e.target.value);if(!isNaN(v)){WL[i].price=v;renderWL();}};
+  });
+}
+
+/* ===================== CHARTS ===================== */
+Chart.defaults.color='#64748b';
+Chart.defaults.borderColor='#e2e8f0';
+Chart.defaults.font.family="'JetBrains Mono','SF Mono','Consolas',monospace";
+Chart.defaults.font.size=10.5;
+Chart.defaults.plugins.tooltip.backgroundColor='#0f172a';
+Chart.defaults.plugins.tooltip.borderColor='#cbd5e1';
+Chart.defaults.plugins.tooltip.borderWidth=1;
+Chart.defaults.plugins.tooltip.titleColor='#f59e0b';
+Chart.defaults.plugins.tooltip.bodyColor='#e2e8f0';
+Chart.defaults.plugins.tooltip.padding=10;
+Chart.defaults.plugins.tooltip.cornerRadius=6;
+Chart.defaults.plugins.legend.labels.boxWidth=10;
+Chart.defaults.plugins.legend.labels.boxHeight=10;
+Chart.defaults.plugins.legend.labels.padding=14;
+function endoChart(){
+  new Chart(document.getElementById('endoChart'),{type:'bar',
+    data:{labels:['US','UK','AUD exo'],
+      datasets:[{label:'Endogenous score',data:[35,31,-6],
+        backgroundColor:['#16a34a','#16a34a','#dc2626'],barThickness:50}]},
+    options:{plugins:{legend:{display:false},
+        title:{display:true,text:'US +35 · UK +31 → Mildly Inflationary   |   AUD/USD exo −6 → Short',color:'#334155'}},
+      scales:{y:{title:{display:true,text:'Score'},grid:{color:'#e2e8f0'}},x:{grid:{display:false}}}}});
+}
+function offHighChart(){
+  new Chart(document.getElementById('offHighChart'),{type:'bar',
+    data:{labels:Object.keys(BB),datasets:[{label:'% off high',data:Object.values(BB).map(r=>r.off),
+      backgroundColor:Object.values(BB).map(r=>r.off>-1?'#16a34a':r.off>-4?'#d97706':'#dc2626')}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{title:{display:true,text:'% off all-time high'},grid:{color:'#e2e8f0'}},y:{grid:{display:false}}}}});
+}
+function cagrBearChart(){
+  new Chart(document.getElementById('cagrBearChart'),{type:'bubble',
+    data:{datasets:[{label:'Index',data:Object.entries(BB).map(([k,r])=>({x:r.cagr,y:Math.abs(r.toBear),r:Math.abs(r.medDepth)/2,label:k})),
+      backgroundColor:'rgba(37,99,235,.4)',borderColor:'#2563eb'}]},
+    options:{plugins:{tooltip:{callbacks:{label:c=>`${c.raw.label}: CAGR ${c.raw.x}% · ${c.raw.y}% to bear · ${Math.round(c.raw.r*2)}% bear depth`}},legend:{display:false}},
+      scales:{x:{title:{display:true,text:'Long-run CAGR %'},grid:{color:'#e2e8f0'}},
+        y:{title:{display:true,text:'Distance to bear (%)'},grid:{color:'#e2e8f0'}}}}});
+}
+function pmiChart(){
+  const sorted=[...PMI].sort((a,b)=>b.pmi-a.pmi);
+  new Chart(document.getElementById('pmiChart'),{type:'bar',
+    data:{labels:sorted.map(p=>p.code+'  '+p.label),
+      datasets:[{label:'PMI',data:sorted.map(p=>p.pmi),
+        backgroundColor:sorted.map(p=>p.pmi>=52?'#22c55e':p.pmi>=50?'#84cc16':p.pmi>=48?'#f5a623':'#ef4444'),
+        borderRadius:3}]},
+    options:{plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false}},y:{min:40,max:58,
+        grid:{color:'#e2e8f0',drawBorder:false},
+        title:{display:true,text:'PMI (>50 = expanding)'}}}}});
+}
+function pmiTrend(){
+  const colors={US:'#2563eb',EZ:'#dc2626',UK:'#7c3aed',AU:'#d97706',JP:'#0891b2',CN:'#16a34a'};
+  new Chart(document.getElementById('pmiTrend'),{type:'line',
+    data:{labels:Array.from({length:24},(_,i)=>'M'+(i+1)),
+      datasets:Object.entries(PMI_HIST).map(([k,v])=>({label:k,data:v,borderColor:colors[k],borderWidth:2,pointRadius:0,tension:.3}))},
+    options:{plugins:{legend:{position:'bottom'},
+        title:{display:true,text:'24-month PMI trend (M1=oldest → M24=latest Jun-2026)',color:'#334155'}},
+      scales:{y:{min:38,max:65,title:{display:true,text:'PMI'},grid:{color:'#e2e8f0'}},x:{grid:{display:false}}}}});
+}
+function cotChart(){
+  const sorted=[...COT].sort((a,b)=>b.flip-a.flip);
+  new Chart(document.getElementById('cotChart'),{type:'bar',
+    data:{labels:sorted.map(c=>c.inst),datasets:[{label:'Net % long',data:sorted.map(c=>c.flip),
+      backgroundColor:sorted.map(c=>c.flip>=0?'#16a34a':'#dc2626')}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},
+        title:{display:true,text:'CFTC non-commercial Flip (%long − %short) — week of 9 Jun 2026',color:'#334155'}},
+      scales:{x:{title:{display:true,text:'Net % (positive = net long)'},grid:{color:'#e2e8f0'}},y:{grid:{display:false}}}}});
+}
+function convChart(){
+  const c={Long:0,Short:0,Watch:0};WL.forEach(r=>c[r.bias]++);
+  new Chart(document.getElementById('convChart'),{type:'doughnut',
+    data:{labels:['Long','Short','Watch'],datasets:[{data:[c.Long,c.Short,c.Watch],
+      backgroundColor:['#16a34a','#dc2626','#d97706'],borderColor:'#ffffff',borderWidth:3}]},
+    options:{cutout:'62%',plugins:{legend:{position:'bottom'}}}});
+}
+function classChart(){
+  const cats={Equity:{Long:0,Short:0,Watch:0},FX:{Long:0,Short:0,Watch:0},Commodity:{Long:0,Short:0,Watch:0},Rates:{Long:0,Short:0,Watch:0}};
+  WL.forEach(r=>cats[r.cat]&&cats[r.cat][r.bias]++);
+  new Chart(document.getElementById('classChart'),{type:'bar',
+    data:{labels:Object.keys(cats),
+      datasets:[
+        {label:'Long',data:Object.values(cats).map(c=>c.Long),backgroundColor:'#16a34a'},
+        {label:'Short',data:Object.values(cats).map(c=>c.Short),backgroundColor:'#dc2626'},
+        {label:'Watch',data:Object.values(cats).map(c=>c.Watch),backgroundColor:'#d97706'}]},
+    options:{plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#e2e8f0'}}}}});
+}
+function atrCompareChart(){
+  const sorted=[...WL].sort((a,b)=>b.atrpct-a.atrpct);
+  new Chart(document.getElementById('atrCompare'),{type:'bar',
+    data:{labels:sorted.map(r=>r.a),datasets:[{data:sorted.map(r=>r.atrpct),
+      backgroundColor:sorted.map(r=>r.atrpct>1.6?'#dc2626':r.atrpct>0.9?'#d97706':'#16a34a')}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{title:{display:true,text:'Daily ATR as % of price'},grid:{color:'#e2e8f0'}},y:{grid:{display:false}}}}});
+}
+
+/* ===================== ATR CALC ===================== */
+function calcATR(){
+  const H=+atrH.value,L=+atrL.value,PC=+atrPC.value,prev=+atrPrev.value,N=+atrPeriod.value,price=+atrPrice.value;
+  const TR=Math.max(H-L,Math.abs(H-PC),Math.abs(L-PC));
+  const ATR=(prev*(N-1)+TR)/N;
+  trOut.textContent=TR.toFixed(2);atrOut.textContent=ATR.toFixed(2);
+  atrPct.textContent=(ATR/price*100).toFixed(2)+'%';atrStop.textContent=(price-ATR).toFixed(2);
+}
+function calcVIX(){
+  const v=+vixLvl.value,d=+vixDays.value,sp=+vixSP.value;
+  const move=v/Math.sqrt(365/d),pct=move/100,pts=sp*pct;
+  vixD2.textContent=d;vixPct.textContent='±'+move.toFixed(2)+'%';vixPts.textContent='±'+pts.toFixed(1);
+  vixUp.textContent=(sp+pts).toFixed(1);vixDn.textContent=(sp-pts).toFixed(1);
+  if(window._vixC)window._vixC.destroy();
+  window._vixC=new Chart(document.getElementById('vixChart'),{type:'bar',
+    data:{labels:['Down','Current','Up'],datasets:[{data:[sp-pts,sp,sp+pts],
+      backgroundColor:['#dc2626','#2563eb','#16a34a'],barThickness:50}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{grid:{color:'#e2e8f0'}}}}});
+}
+
+/* ===================== DISTRIBUTION ===================== */
+const DISTP={
+  spx:{mean:0.04,std:1.05,skew:-0.6,kurt:4.2},ndx:{mean:0.06,std:1.30,skew:-0.7,kurt:5.0},
+  ftse:{mean:0.02,std:1.00,skew:-0.5,kurt:3.5},dax:{mean:0.03,std:1.20,skew:-0.6,kurt:4.0},
+  eur:{mean:0.00,std:0.45,skew:0.1,kurt:2.5},gbp:{mean:0.01,std:0.50,skew:-0.2,kurt:3.0},
+  jpy:{mean:0.00,std:0.55,skew:0.2,kurt:2.8},wti:{mean:0.01,std:2.10,skew:-0.8,kurt:6.0},
+  gold:{mean:0.03,std:1.10,skew:-0.3,kurt:4.5}};
+document.getElementById('distSel').onchange=e=>{const d=DISTP[e.target.value];dMean.value=d.mean;dStd.value=d.std;dSkew.value=d.skew;dKurt.value=d.kurt;calcDist();};
+function calcDist(){
+  const mu=+dMean.value,sd=+dStd.value,sk=+dSkew.value,ku=+dKurt.value;
+  const bins=21,lo=-4*sd,hi=4*sd,step=(hi-lo)/bins;
+  const hist=new Array(bins).fill(0);const SAMPLE=4000;
+  for(let i=0;i<SAMPLE;i++){
+    let u1=Math.random(),u2=Math.random();
+    let z=Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+    z=z+sk*(z*z-1)/6+ku*(z*z*z-3*z)/24;
+    let x=mu+z*sd;if(x<lo)x=lo;if(x>hi)x=hi;
+    const idx=Math.min(bins-1,Math.floor((x-lo)/step));hist[idx]++;
+  }
+  const labels=hist.map((_,i)=>(lo+i*step).toFixed(1));
+  const norm=labels.map((_,i)=>{const x=lo+i*step;return Math.exp(-0.5*((x-mu)/sd)**2)/(sd*Math.sqrt(2*Math.PI))*SAMPLE*step;});
+  if(window._distC)window._distC.destroy();
+  window._distC=new Chart(document.getElementById('distChart'),{type:'bar',
+    data:{labels,datasets:[
+      {label:'Observed daily returns',data:hist,backgroundColor:'rgba(37,99,235,.55)',borderColor:'#2563eb',borderWidth:1},
+      {label:'Normal distribution',data:norm,type:'line',borderColor:'#d97706',borderWidth:2,pointRadius:0,fill:false,tension:.4}]},
+    options:{plugins:{legend:{position:'bottom'}},
+      scales:{x:{title:{display:true,text:'Daily return %'},grid:{display:false}},y:{grid:{color:'#e2e8f0'}}}}});
+  const fat=ku>3||sk<-0.4;
+  dVerdict.textContent=fat?'Fat left tail':'Near-normal / symmetric';
+  dVerdict.style.color=fat?'var(--red)':'var(--green)';
+  dImpl.innerHTML=fat?`Negative skew (${sk.toFixed(2)}) &amp; excess kurtosis (${ku.toFixed(2)}) → naked longs dangerous. PTMI rule: <b>buy downside protection, prefer spreads, size smaller</b>.`
+    :`Returns symmetric → directional longs/shorts statistically reasonable. Standard ATR sizing &amp; 2R targets.`;
+}
+function calcSpread(){
+  const Lp=+spLprice.value,Sp=+spSprice.value,Lb=+spLbeta.value,Sb=+spSbeta.value,cap=+spCap.value,mode=spMode.value,mean=+spMean.value;
+  const spread=Lp-Sp;spNow.textContent='$'+spread.toFixed(2);
+  const vs=spread-mean;spVsMean.textContent=(vs>=0?'+':'')+'$'+vs.toFixed(2);
+  spVsMean.className='big mono '+(vs>=0?'pos':'neg');
+  let Ld,Sd;
+  if(mode==='beta'){const ratio=Sb/Lb;Ld=cap/(1+ratio);Sd=cap-Ld;}else{Ld=cap/2;Sd=cap/2;}
+  spLsh.textContent=Math.round(Ld/Lp)+' sh';spSsh.textContent=Math.round(Sd/Sp)+' sh';
+  spLsh.className='big mono pos';spSsh.className='big mono neg';
+}
+function calcBeta(){
+  const cap=+bhCap.value,Lb=+bhLb.value,Sb=+bhSb.value,Lp=+bhLp.value,Sp=+bhSp.value;
+  const ratio=Sb/Lb;bhRatio.textContent=ratio.toFixed(3);
+  const Ld=cap/(1+ratio),Sd=cap-Ld;
+  bhLd.textContent='$'+Ld.toFixed(0);bhSd.textContent='$'+Sd.toFixed(0);
+  bhSh.innerHTML=`<span class="pos">${Math.round(Ld/Lp)}</span> / <span class="neg">${Math.round(Sd/Sp)}</span>`;
+}
+function calcKelly(){
+  const W=+kW.value,Wd=+kWd.value,Ld=+kLd.value,eq=+kEq.value,frac=+kFrac.value;
+  const R=Wd/Ld,full=W-(1-W)/R,used=Math.max(0,full*frac);
+  kR.textContent=R.toFixed(2);kFull.textContent=(full*100).toFixed(1)+'%';
+  kUsed.textContent=(used*100).toFixed(1)+'%';kDollar.textContent='$'+Math.round(eq*used).toLocaleString();
+}
+
+/* ===================== MACRO TREND LAB (from Excel) ===================== */
+const MACRO_SERIES=[{"d":"2020-01","ff":1.55,"y2":1.33,"y10":1.51,"cv":0.18,"m3":1.55,"cpi":259.127,"ccpi":266.716,"pce":104.49,"cpce":104.507,"ip":101.034,"sent":99.8,"unr":3.6,"baa":2.01,"usd":115.734,"oil":51.58,"ism":50.9,"nmi":55.5},{"d":"2020-04","ff":0.05,"y2":0.2,"y10":0.64,"cv":0.44,"m3":0.09,"cpi":256.032,"ccpi":265.746,"pce":103.838,"cpce":104.293,"ip":84.562,"sent":71.8,"unr":14.8,"baa":3.47,"usd":122.327,"oil":19.23,"ism":41.5,"nmi":41.8},{"d":"2020-07","ff":0.09,"y2":0.11,"y10":0.55,"cv":0.44,"m3":0.09,"cpi":258.352,"ccpi":267.389,"pce":104.578,"cpce":104.937,"ip":95.026,"sent":72.5,"unr":10.2,"baa":2.69,"usd":117.208,"oil":40.1,"ism":54.2,"nmi":58.1},{"d":"2020-10","ff":0.09,"y2":0.14,"y10":0.88,"cv":0.74,"m3":0.09,"cpi":260.319,"ccpi":269.306,"pce":105.151,"cpce":105.507,"ip":96.739,"sent":81.8,"unr":6.9,"baa":2.65,"usd":116.135,"oil":35.64,"ism":59.3,"nmi":56.6},{"d":"2021-01","ff":0.09,"y2":0.11,"y10":1.11,"cv":1.0,"m3":0.06,"cpi":262.687,"ccpi":270.387,"pce":106.147,"cpce":106.281,"ip":98.882,"sent":79.0,"unr":6.4,"baa":2.16,"usd":111.951,"oil":52.16,"ism":58.7,"nmi":58.7},{"d":"2021-04","ff":0.07,"y2":0.16,"y10":1.65,"cv":1.49,"m3":0.01,"cpi":266.614,"ccpi":273.66,"pce":107.618,"cpce":107.558,"ip":98.559,"sent":88.3,"unr":6.1,"baa":1.97,"usd":112.084,"oil":63.5,"ism":60.7,"nmi":62.7},{"d":"2021-07","ff":0.1,"y2":0.19,"y10":1.24,"cv":1.05,"m3":0.06,"cpi":271.903,"ccpi":278.648,"pce":109.256,"cpce":109.058,"ip":100.252,"sent":81.2,"unr":5.4,"baa":1.92,"usd":112.671,"oil":73.93,"ism":59.5,"nmi":64.1},{"d":"2021-10","ff":0.08,"y2":0.48,"y10":1.55,"cv":1.07,"m3":0.05,"cpi":276.55,"ccpi":281.668,"pce":110.762,"cpce":110.188,"ip":100.186,"sent":71.7,"unr":4.5,"baa":1.77,"usd":114.135,"oil":83.5,"ism":60.8,"nmi":66.7},{"d":"2022-01","ff":0.08,"y2":1.18,"y10":1.79,"cv":0.61,"m3":0.22,"cpi":280.845,"ccpi":285.18,"pce":112.191,"cpce":111.418,"ip":100.573,"sent":70.6,"unr":3.9,"baa":1.84,"usd":115.566,"oil":89.16,"ism":58.8,"nmi":62.3},{"d":"2022-04","ff":0.33,"y2":2.7,"y10":2.89,"cv":0.19,"m3":0.85,"cpi":288.561,"ccpi":290.514,"pce":114.812,"cpce":113.307,"ip":101.44,"sent":65.2,"unr":3.7,"baa":1.91,"usd":119.493,"oil":104.59,"ism":55.4,"nmi":57.1},{"d":"2022-07","ff":1.68,"y2":2.89,"y10":2.67,"cv":-0.22,"m3":2.41,"cpi":294.913,"ccpi":295.088,"pce":116.631,"cpce":114.628,"ip":101.223,"sent":51.5,"unr":3.5,"baa":2.31,"usd":121.768,"oil":101.31,"ism":52.8,"nmi":56.7},{"d":"2022-10","ff":2.56,"y2":4.51,"y10":4.1,"cv":-0.41,"m3":4.22,"cpi":296.349,"ccpi":298.226,"pce":117.371,"cpce":115.788,"ip":101.292,"sent":58.6,"unr":3.5,"baa":2.17,"usd":127.622,"oil":86.54,"ism":50.9,"nmi":56.7},{"d":"2023-01","ff":4.1,"y2":4.21,"y10":3.52,"cv":-0.69,"m3":4.7,"cpi":298.832,"ccpi":301.394,"pce":118.384,"cpce":116.952,"ip":99.766,"sent":59.8,"unr":3.5,"baa":1.97,"usd":118.98,"oil":78.95,"ism":48.4,"nmi":49.2},{"d":"2023-04","ff":4.65,"y2":4.04,"y10":3.44,"cv":-0.6,"m3":5.1,"cpi":301.821,"ccpi":305.147,"pce":119.538,"cpce":118.315,"ip":101.02,"sent":62.0,"unr":3.5,"baa":2.05,"usd":119.225,"oil":76.78,"ism":46.3,"nmi":51.2},{"d":"2023-07","ff":5.08,"y2":4.88,"y10":3.97,"cv":-0.91,"m3":5.55,"cpi":304.014,"ccpi":308.322,"pce":120.469,"cpce":119.39,"ip":100.12,"sent":64.2,"unr":3.6,"baa":2.0,"usd":117.824,"oil":81.8,"ism":46.0,"nmi":53.9},{"d":"2023-10","ff":5.33,"y2":5.07,"y10":4.88,"cv":-0.19,"m3":5.59,"cpi":307.276,"ccpi":310.539,"pce":121.419,"cpce":120.058,"ip":101.021,"sent":67.8,"unr":3.7,"baa":1.78,"usd":123.836,"oil":81.64,"ism":49.0,"nmi":53.6},{"d":"2024-01","ff":5.33,"y2":4.27,"y10":3.99,"cv":-0.28,"m3":5.42,"cpi":309.698,"ccpi":314.319,"pce":122.23,"cpce":121.217,"ip":99.222,"sent":79.0,"unr":3.7,"baa":1.62,"usd":120.433,"oil":76.28,"ism":49.1,"nmi":53.4},{"d":"2024-04","ff":5.33,"y2":5.04,"y10":4.69,"cv":-0.35,"m3":5.46,"cpi":313.023,"ccpi":317.649,"pce":123.341,"cpce":122.304,"ip":100.243,"sent":77.2,"unr":3.9,"baa":1.46,"usd":122.985,"oil":83.49,"ism":49.2,"nmi":49.4},{"d":"2024-07","ff":5.33,"y2":4.29,"y10":4.09,"cv":-0.2,"m3":5.41,"cpi":313.569,"ccpi":318.94,"pce":123.736,"cpce":122.911,"ip":99.976,"sent":66.4,"unr":4.2,"baa":1.59,"usd":123.637,"oil":79.36,"ism":46.8,"nmi":51.4},{"d":"2024-10","ff":4.83,"y2":4.16,"y10":4.28,"cv":0.12,"m3":4.64,"cpi":315.631,"ccpi":321.731,"pce":124.494,"cpce":123.832,"ip":99.469,"sent":70.5,"unr":4.1,"baa":1.53,"usd":124.799,"oil":69.58,"ism":46.5,"nmi":56.0},{"d":"2025-01","ff":4.33,"y2":4.22,"y10":4.58,"cv":0.36,"m3":4.31,"cpi":318.961,"ccpi":324.638,"pce":125.417,"cpce":124.587,"ip":100.065,"sent":71.7,"unr":4.0,"baa":1.45,"usd":128.483,"oil":72.84,"ism":50.9,"nmi":52.8},{"d":"2025-04","ff":4.33,"y2":3.6,"y10":4.17,"cv":0.57,"m3":4.31,"cpi":320.302,"ccpi":326.467,"pce":126.15,"cpce":125.502,"ip":101.128,"sent":52.2,"unr":4.2,"baa":1.9,"usd":122.592,"oil":59.55,"ism":48.7,"nmi":51.6},{"d":"2025-07","ff":4.33,"y2":3.94,"y10":4.37,"cv":0.43,"m3":4.41,"cpi":322.169,"ccpi":328.682,"pce":126.96,"cpce":126.43,"ip":101.894,"sent":61.7,"unr":4.3,"baa":1.71,"usd":121.721,"oil":70.36,"ism":48.0,"nmi":50.1},{"d":"2025-10","ff":4.09,"y2":3.6,"y10":4.11,"cv":0.51,"m3":3.89,"cpi":324.245,"ccpi":330.418,"pce":127.871,"cpce":127.243,"ip":101.219,"sent":53.6,"unr":4.4,"baa":1.68,"usd":121.386,"oil":61.75,"ism":48.7,"nmi":52.4},{"d":"2026-01","ff":3.64,"y2":3.52,"y10":4.26,"cv":0.74,"m3":3.67,"cpi":326.588,"ccpi":332.793,"pce":129.002,"cpce":128.432,"ip":101.124,"sent":56.4,"unr":4.3,"baa":1.67,"usd":117.9,"oil":64.5,"ism":52.6,"nmi":53.8},{"d":"2026-04","ff":3.64,"y2":3.88,"y10":4.4,"cv":0.52,"m3":3.68,"cpi":332.407,"ccpi":335.423,"pce":130.902,"cpce":129.63,"ip":102.509,"sent":49.8,"unr":4.3,"baa":1.71,"usd":118.671,"oil":108.64,"ism":52.7,"nmi":53.6},{"d":"2026-06","ff":3.63,"y2":4.16,"y10":4.5,"cv":0.3,"m3":3.85,"cpi":333.979,"ccpi":336.121,"pce":130.902,"cpce":129.63,"ip":102.647,"sent":49.8,"unr":4.3,"baa":1.62,"usd":120.396,"oil":78.94,"ism":54.0,"nmi":54.5}];
+const SERIES_META={
+  ff:{lab:'Fed Funds %',col:'#2563eb',unit:''},y2:{lab:'2Y Treasury %',col:'#0891b2',unit:''},
+  y10:{lab:'10Y Treasury %',col:'#7c3aed',unit:''},cv:{lab:'10s2s curve (×100 bps)',col:'#dc2626',unit:'',scale:100},
+  m3:{lab:'3M T-Bill %',col:'#64748b',unit:''},cpiyoy:{lab:'CPI index',col:'#d97706',unit:''},
+  unr:{lab:'Unemployment %',col:'#16a34a',unit:''},sent:{lab:'UMich Sentiment',col:'#db2777',unit:''},
+  usd:{lab:'USD Index',col:'#0d9488',unit:''},oil:{lab:'WTI Oil $',col:'#4338ca',unit:''},
+  ism:{lab:'ISM Mfg PMI',col:'#9333ea',unit:''},nmi:{lab:'ISM Services PMI',col:'#c026d3',unit:''},
+  ip:{lab:'Industrial Production',col:'#0284c7',unit:''},baa:{lab:'Baa-10Y spread %',col:'#ea580c',unit:''}
+};
+function renderTrend(){
+  const sel=Array.from(document.getElementById('trendSel').selectedOptions).map(o=>o.value);
+  if(!sel.length) return;
+  const labels=MACRO_SERIES.map(r=>r.d);
+  const datasets=sel.map(k=>{
+    const m=SERIES_META[k]||{lab:k,col:'#999'};
+    const scale=m.scale||1;
+    return {label:m.lab,data:MACRO_SERIES.map(r=>r[k]==null?null:r[k]*scale),
+      borderColor:m.col,backgroundColor:m.col,borderWidth:2.2,pointRadius:2.5,pointHoverRadius:5,tension:.35,spanGaps:true,yAxisID:'y'};
+  });
+  // multi-axis: each indicator its own axis scaled to 0..1 of range, OR shared if single
+  if(window._trendC)window._trendC.destroy();
+  const multiAxis=sel.length>1;
+  const opts={plugins:{legend:{position:'bottom'}},
+    interaction:{mode:'index',intersect:false},
+    scales:{x:{grid:{display:false}},y:{position:'left',grid:{color:'#e2e8f0'},title:{display:true,text:multiAxis?'(each line auto-scaled — compare shapes/patterns, not levels)':'value'}}}};
+  // Normalize each series to 0-100 for shape comparison when multi
+  let finalDs=datasets;
+  if(multiAxis){
+    finalDs=datasets.map(ds=>{
+      const vals=ds.data.filter(v=>v!=null);
+      const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+      return {...ds,data:ds.data.map(v=>v==null?null:((v-mn)/rng)*100)};
+    });
+  }
+  window._trendC=new Chart(document.getElementById('trendChart'),{type:'line',data:{labels,datasets:finalDs},options:opts});
+}
+function trendPreset(p){
+  const sel=document.getElementById('trendSel');
+  Array.from(sel.options).forEach(o=>o.selected=false);
+  const map={rates:['ff','y2','y10','cv'],growth:['ism','cpiyoy','unr','sent'],risk:['cv','baa','oil','sent']};
+  (map[p]||[]).forEach(k=>{const o=sel.querySelector(`[value="${k}"]`);if(o)o.selected=true;});
+  renderTrend();
+}
+function renderMomentum(){
+  const last=MACRO_SERIES[MACRO_SERIES.length-1]; // 2026-06
+  const yago=MACRO_SERIES.find(r=>r.d==='2025-06')||MACRO_SERIES[MACRO_SERIES.length-13];
+  const rows=[
+    {k:'ff',n:'Fed Funds',last:last.ff,ya:yago.ff,good:'down'},
+    {k:'y10',n:'10Y Treasury',last:last.y10,ya:yago.y10,good:'down'},
+    {k:'cv',n:'10s2s Curve',last:last.cv,ya:yago.cv,good:'up',scale:100,unit:'bp'},
+    {k:'oil',n:'WTI Oil',last:last.oil,ya:yago.oil,good:'neutral',unit:'$'},
+    {k:'usd',n:'USD Index',last:last.usd,ya:yago.usd,good:'up'},
+    {k:'sent',n:'UMich Sentiment',last:last.sent,ya:yago.sent,good:'up'},
+    {k:'ism',n:'ISM Mfg',last:last.ism,ya:yago.ism,good:'up'},
+    {k:'unr',n:'Unemployment',last:last.unr,ya:yago.unr,good:'down',unit:'%'},
+    {k:'cpiyoy',n:'CPI level',last:last.cpiyoy,ya:yago.cpiyoy,good:'down'}
+  ];
+  document.getElementById('momentumBody').innerHTML=rows.map(r=>{
+    const scale=r.scale||1;
+    const l=r.last*scale, y=r.ya*scale;
+    const d=l-y;
+    const dPct=y!==0?(d/y*100):0;
+    const up=d>0;
+    const trendCol=up?'var(--red)':'var(--green)';
+    const trendArrow=up?'▲':'▼';
+    let read='';
+    const ad=Math.abs(d);
+    if(r.k==='ff')read=d<-0.5?'<span class="tag bull">Easing</span>':'<span class="tag neutral">Hold</span>';
+    else if(r.k==='cv')read=ad>0.3?'<span class="tag watch">Re-flattening</span>':'<span class="tag neutral">Stable</span>';
+    else if(r.k==='oil')read=up?'<span class="tag long">Inflation impulse</span>':'<span class="tag neutral">Disinflation</span>';
+    else if(r.k==='usd')read=up?'<span class="tag short">FX drag / tight</span>':'<span class="tag neutral">USD soft</span>';
+    else if(r.k==='sent')read=d<-3?'<span class="tag bear">Consumer weak</span>':'<span class="tag neutral">Stable</span>';
+    else if(r.k==='ism')read=l>=52?'<span class="tag bull">Cyclical up</span>':l>=50?'<span class="tag neutral">Flat</span>':'<span class="tag bear">Contraction</span>';
+    else if(r.k==='unr')read=up?'<span class="tag bear">Labour cooling</span>':'<span class="tag bull">Firm</span>';
+    else read='<span class="tag neutral">—</span>';
+    const valStr=v=>(r.unit==='bp'?v.toFixed(0)+'bp':r.unit==='%'?v.toFixed(1)+'%':r.unit==='$'?'$'+v.toFixed(1):v.toFixed(2));
+    return `<tr><td><b>${r.n}</b></td><td class="mono">${valStr(y)}</td><td class="mono">${valStr(l)}</td>
+      <td class="mono" style="color:${trendCol}">${trendArrow} ${d>0?'+':''}${valStr(d).replace(/[^\d.\-+]/g,'')} (${dPct>0?'+':''}${dPct.toFixed(1)}%)</td>
+      <td style="color:${trendCol};font-weight:700">${trendArrow}</td><td>${read}</td></tr>`;
+  }).join('');
+}
+
+/* ===================== US ENDO SCORE ENGINE (from Excel) ===================== */
+const ENDO=[
+  {code:'ISM',driver:'Business Sentiment — ISM Mfg',date:'2026-05',val:54,score:3,prev:8},
+  {code:'NMI',driver:'Business Sentiment — NMI Services',date:'2026-05',val:54.5,score:4,prev:5},
+  {code:'UMCSI',driver:'Consumer Sentiment',date:'2026-04',val:49.8,score:10,prev:-5},
+  {code:'BP',driver:'Building Permits',date:'2026-05',val:1413,score:4,prev:3},
+  {code:'M2',driver:'M2 Money Supply (YoY)',date:'2026-05',val:'+5.4%',score:4,prev:0},
+  {code:'IR%',driver:'Fed Funds Rate',date:'2017-09',val:'STALE',score:0,prev:0},
+  {code:'CPI',driver:'CPI All Items (MoM)',date:'2026-05',val:'+0.47%',score:6,prev:4},
+  {code:'Core CPI',driver:'CPI Core (MoM)',date:'2026-05',val:'+0.21%',score:0,prev:0},
+  {code:'PPI',driver:'PPI Finished Goods (MoM)',date:'2026-05',val:'+2.74%',score:3,prev:2},
+  {code:'PPI Core',driver:'PPI Core (MoM)',date:'2026-05',val:'+0.30%',score:6,prev:4},
+  {code:'NFP',driver:'Employment (NFP MoM)',date:'2026-05',val:'+159k',score:3,prev:4},
+  {code:'Debt/GDP',driver:'Govt Debt/GDP Ratio',date:'2026-01',val:'122.6%',score:10,prev:10},
+  {code:'Deficit',driver:'Govt Deficit %GDP',date:'2025-10',val:'−5.6%',score:6,prev:3},
+  {code:'Interest',driver:'Govt Interest/GDP',date:'2025-10',val:'3.1%',score:-10,prev:-5},
+  {code:'Liquidity',driver:'Govt Liquidity Cover',date:'2025-10',val:'5.4×',score:-4,prev:7},
+  {code:'10Y',driver:'US 10Y Treasury',date:'2026-05',val:'4.45%',score:4,prev:7},
+  {code:'CBBS',driver:'CB Balance Sheet %GDP',date:'2026-06',val:'21.1%',score:2,prev:3}
+];
+function renderEndo(){
+  const tb=document.getElementById('endoBody');
+  tb.innerHTML=ENDO.map(r=>{
+    const delta=r.score-r.prev;
+    const dCol=delta>0?'var(--green)':delta<0?'var(--red)':'var(--muted)';
+    const dStr=delta>0?'+'+delta:delta;
+    // trend bar: -10 to +10 mapped to bar
+    const pct=((r.score+10)/20)*100;
+    const barCol=r.score>3?'var(--red)':r.score<-3?'var(--green)':'var(--muted)';
+    const stale=r.val==='STALE'||r.date.startsWith('2017')||r.date.startsWith('2025')?' <span class="tag neutral" style="font-size:8px">STALE</span>':'';
+    return `<tr>
+      <td><b>${r.code}</b></td>
+      <td style="font-size:12px">${r.driver}</td>
+      <td class="mono" style="font-size:11px">${r.date}${stale}</td>
+      <td class="mono">${r.val}</td>
+      <td class="mono" style="font-weight:700;color:${barCol}">${r.score>0?'+':''}${r.score}</td>
+      <td class="mono" style="color:var(--dim)">${r.prev>0?'+':''}${r.prev}</td>
+      <td class="mono" style="color:${dCol};font-weight:700">${dStr}</td>
+      <td style="min-width:90px"><div style="height:8px;background:#e2e8f0;border-radius:4px;position:relative">
+        <div style="position:absolute;left:50%;top:-2px;width:1px;height:12px;background:#5e7197"></div>
+        <div style="position:absolute;top:0;height:8px;border-radius:4px;background:${barCol};${r.score>=0?'left:50%':'right:50%'};width:${Math.abs(pct-50)}%"></div>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+function endoCompChart(){
+  const sorted=[...ENDO].filter(r=>r.val!=='STALE').sort((a,b)=>b.score-a.score);
+  new Chart(document.getElementById('endoCompChart'),{type:'bar',
+    data:{labels:sorted.map(r=>r.code),datasets:[{label:'Auto score',data:sorted.map(r=>r.score),
+      backgroundColor:sorted.map(r=>r.score>3?'#dc2626':r.score<-3?'#16a34a':'#5e7197')}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},
+        title:{display:true,text:'17-component contribution to Endogenous Score (+51 = Strongly Inflationary)',color:'#334155'}},
+      scales:{x:{title:{display:true,text:'Score (−10 … +10)'},grid:{color:'#e2e8f0'}},y:{grid:{display:false}}}}});
+}
+
+/* ===================== LEADING INDICATORS STRATEGY (8 Excel files) ===================== */
+const LEADING={"Retail Sales":[["2021-01",559230],["2021-04",608961],["2021-07",601817],["2021-10",618573],["2022-01",631509],["2022-04",660194],["2022-07",659550],["2022-10",668671],["2023-01",680253],["2023-04",670494],["2023-07",678424],["2023-10",686148],["2024-01",680456],["2024-04",687602],["2024-07",698835],["2024-10",708290],["2025-01",711260],["2025-04",721903],["2025-07",727727],["2025-10",731051],["2026-01",734503],["2026-04",757085],["2026-05",763705]],"CPI":[["2021-01",262.231],["2021-04",266.832],["2021-07",272.184],["2021-10",276.59],["2022-01",281.933],["2022-04",288.663],["2022-07",295.271],["2022-10",298.062],["2023-01",300.42],["2023-04",302.845],["2023-07",304.609],["2023-10",307.696],["2024-01",309.698],["2024-04",313.023],["2024-07",313.569],["2024-10",315.631],["2025-01",318.961],["2025-04",320.302],["2025-07",322.169],["2025-10",324.245],["2026-01",326.588],["2026-04",332.407],["2026-05",333.979]],"UMCSI Sentiment":[["2021-01",79],["2021-04",88.3],["2021-07",81.2],["2021-10",71.7],["2022-01",67.2],["2022-04",65.2],["2022-07",51.5],["2022-10",59.9],["2023-01",64.9],["2023-04",63.7],["2023-07",71.5],["2023-10",63.8],["2024-01",79],["2024-04",77.2],["2024-07",66.4],["2024-10",70.5],["2025-01",71.7],["2025-04",52.2],["2025-07",61.7],["2025-10",53.6],["2026-01",56.4],["2026-04",49.8],["2026-06",49.5]],"Unemployment":[["2021-01",6.3],["2021-04",6.1],["2021-07",5.4],["2021-10",4.5],["2022-01",4],["2022-04",3.7],["2022-07",3.5],["2022-10",3.6],["2023-01",3.5],["2023-04",3.4],["2023-07",3.5],["2023-10",3.9],["2024-01",3.7],["2024-04",3.9],["2024-07",4.2],["2024-10",4.1],["2025-01",4],["2025-04",4.2],["2025-07",4.3],["2025-10",4.4],["2026-01",4.3],["2026-04",4.3],["2026-06",4.2]],"ISM Mfg PMI":[["2021-01",58.68],["2021-04",61.46],["2021-07",59.72],["2021-10",60.74],["2022-01",57.6],["2022-04",55.36],["2022-07",52.78],["2022-10",50.16],["2023-01",47.38],["2023-04",47.14],["2023-07",46.08],["2023-10",46.74],["2024-01",48.7],["2024-04",49.22],["2024-07",46.76],["2024-10",47.84],["2025-01",50.94],["2025-04",50.3],["2025-07",50.3],["2025-10",49.62],["2026-01",53.24],["2026-04",52.42],["2026-06",53.34]],"Durable Goods":[["2021-01",249937],["2021-04",252613],["2021-07",259416],["2021-10",263534],["2022-01",280925],["2022-04",279157],["2022-07",284460],["2022-10",287071],["2023-01",288874],["2023-04",290168],["2023-07",293278],["2023-10",285976],["2024-01",280614],["2024-04",286972],["2024-07",293234],["2024-10",293266],["2025-01",291195],["2025-04",295229],["2025-07",303032],["2025-10",307570],["2026-01",319975],["2026-04",346182],["2026-05",332218]],"Real GDP":[["2021-01",21082.134],["2021-04",21440.929],["2021-07",21617.828],["2021-10",21988.737],["2022-01",21932.71],["2022-04",21967.045],["2022-07",22125.625],["2022-10",22278.345],["2023-01",22439.607],["2023-04",22580.499],["2023-07",22840.989],["2023-10",23033.78],["2024-01",23082.119],["2024-04",23286.508],["2024-07",23478.57],["2024-10",23586.542],["2025-01",23548.21],["2025-04",23770.976],["2025-07",24026.834],["2025-10",24055.749],["2026-01",24180.419]],"ISM Services NMI":[["2021-01",58.7],["2021-04",62.7],["2021-07",64.1],["2021-10",66.7],["2022-01",59.9],["2022-04",57.1],["2022-07",56.7],["2022-10",54.4],["2023-01",55.2],["2023-04",51.9],["2023-07",52.7],["2023-10",51.8],["2024-01",53.4],["2024-04",49.4],["2024-07",51.4],["2024-10",56],["2025-01",52.8],["2025-04",51.6],["2025-07",50.1],["2025-10",52.4],["2026-01",53.8],["2026-04",53.6],["2026-05",54.5]]};
+const LI_META={
+  "Retail Sales":{col:'#2563eb',good:'up',fmt:v=>'$'+(v/1000).toFixed(0)+'B',inv:false},
+  "CPI":{col:'#dc2626',good:'down',fmt:v=>v.toFixed(1),inv:true},
+  "UMCSI Sentiment":{col:'#db2777',good:'up',fmt:v=>v.toFixed(1),inv:false},
+  "Unemployment":{col:'#16a34a',good:'down',fmt:v=>v.toFixed(1)+'%',inv:true},
+  "ISM Mfg PMI":{col:'#9333ea',good:'up',fmt:v=>v.toFixed(1),inv:false,threshold:50},
+  "Durable Goods":{col:'#0891b2',good:'up',fmt:v=>'$'+(v/1000).toFixed(0)+'B',inv:false},
+  "Real GDP":{col:'#16a34a',good:'up',fmt:v=>'$'+(v/1000).toFixed(1)+'T',inv:false},
+  "ISM Services NMI":{col:'#c026d3',good:'up',fmt:v=>v.toFixed(1),inv:false,threshold:50}
+};
+function valAt(series,offsetFromEnd){
+  const idx=series.length-1-offsetFromEnd;
+  return idx>=0?series[idx][1]:null;
+}
+function pctChg(series,offset){
+  const a=valAt(series,offset), b=valAt(series,0);
+  if(!a||!b) return null;
+  return (b-a)/a*100;
+}
+function computeSignal(name){
+  const s=LEADING[name], meta=LI_META[name];
+  const latest=valAt(s,0);
+  // momentum over available history (roughly 3,6,12 months back given quarterly sampling)
+  const m3=pctChg(s,1), m6=pctChg(s,2), m12=pctChg(s,4);
+  // signal: invert if "good is down"
+  const norm=v=>meta.inv?-(v||0):(v||0);
+  let score=0;
+  if(m3!=null){score+=Math.sign(norm(m3));}
+  if(m6!=null){score+=Math.sign(norm(m6));}
+  if(m12!=null){score+=Math.sign(norm(m12));}
+  // structural threshold for PMIs
+  if(meta.threshold){score += latest>=meta.threshold?1:-1;}
+  // sentiment: very low = contrarian-bullish (mean-revert)
+  if(name==='UMCSI Sentiment'){score += latest<55?1:0;}
+  // clamp -3..+3 to -2..+2
+  score=Math.max(-2,Math.min(2,score));
+  let signal, tag;
+  if(score>=1){signal='Bullish';tag='bull';}
+  else if(score<=-1){signal='Bearish';tag='bear';}
+  else {signal='Neutral';tag='neutral';}
+  return {latest, m3, m6, m12, score, signal, tag};
+}
+function renderLeading(){
+  const grid=document.getElementById('liChartGrid');
+  const tbody=document.getElementById('liSignalBody');
+  let bull=0,bear=0,total=0;
+  let chartHTML='', tableHTML='';
+  Object.keys(LEADING).forEach((name,idx)=>{
+    const meta=LI_META[name], s=LEADING[name];
+    const sig=computeSignal(name);
+    total+=Math.abs(sig.score);
+    if(sig.score>0)bull++; else if(sig.score<0)bear++;
+    const labels=s.map(r=>r[0]);
+    const data=s.map(r=>r[1]);
+    const lineCol=meta.col;
+    // trend arrow
+    const m3=sig.m3, up=m3>0;
+    const arrow=up?'▲':'▼';
+    const arrowCol=up?(meta.inv?'var(--red)':'var(--green)'):(meta.inv?'var(--green)':'var(--red)');
+    // signal tag color
+    const tagCls=sig.tag;
+    // trade implication text
+    const impl=tradeImpl(name,sig);
+    chartHTML+=`<div class="card" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <b style="font-size:13.5px">${name}</b>
+        <span class="tag ${tagCls}">${sig.signal}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin:2px 0 6px">Latest: <b style="color:${lineCol}">${meta.fmt(sig.latest)}</b> &nbsp; 3mo Δ <span style="color:${arrowCol};font-weight:700">${arrow} ${m3!=null?(m3>0?'+':'')+m3.toFixed(1)+'%':'—'}</span></div>
+      <div style="height:120px;position:relative"><canvas id="liChart${idx}"></canvas></div>
+    </div>`;
+    tableHTML+=`<tr>
+      <td><b>${name}</b></td>
+      <td class="mono" style="color:${lineCol};font-weight:700">${meta.fmt(sig.latest)}</td>
+      <td class="mono">${sig.m3!=null?(sig.m3>0?'+':'')+sig.m3.toFixed(1)+'%':'—'}</td>
+      <td class="mono">${sig.m6!=null?(sig.m6>0?'+':'')+sig.m6.toFixed(1)+'%':'—'}</td>
+      <td class="mono">${sig.m12!=null?(sig.m12>0?'+':'')+sig.m12.toFixed(1)+'%':'—'}</td>
+      <td style="color:${arrowCol};font-weight:700">${arrow}</td>
+      <td><span class="tag ${tagCls}">${sig.signal}</span></td>
+      <td style="color:var(--muted);font-size:11.5px">${impl}</td>
+    </tr>`;
+    // store for async chart render
+    setTimeout(()=>renderLiChart(idx,labels,data,lineCol,meta,name),0);
+  });
+  grid.innerHTML=chartHTML;
+  tbody.innerHTML=tableHTML;
+  // composite
+  const net=bull-bear;
+  const scorePct=Math.round(net/Object.keys(LEADING).length*100);
+  document.getElementById('liCompScore').textContent=(net>0?'+':'')+net;
+  document.getElementById('liCompScore').style.color=net>0?'var(--green)':net<0?'var(--red)':'var(--muted)';
+  document.getElementById('liBull').textContent=bull;
+  document.getElementById('liBear').textContent=bear;
+  let stance,desc,gaugeHTML;
+  const pctBull=bull/(bull+bear||1)*100;
+  if(net>=3){stance='RISK-ON';desc='Strong pro-cyclical tilt';}
+  else if(net>=1){stance='Mild Risk-On';desc='Cautious long bias';}
+  else if(net<=-3){stance='RISK-OFF';desc='Defensive, raise cash';}
+  else if(net<=-1){stance='Mild Risk-Off';desc='Cautious short bias';}
+  else{stance='NEUTRAL';desc='Balanced — use pair trades';}
+  document.getElementById('liNet').textContent=stance;
+  document.getElementById('liNet').style.color=net>0?'var(--green)':net<0?'var(--red)':'var(--muted)';
+  document.getElementById('liNetDesc').textContent=desc;
+  document.getElementById('liCompLabel').textContent=`${bull} bull / ${bear} bear / ${8-bull-bear} neutral of 8`;
+  document.getElementById('liGauge').innerHTML=
+    `<div style="background:var(--green);width:${pctBull}%">${bull} Bull</div>
+     <div style="background:var(--muted);width:${(8-bull-bear)/8*100}%">${8-bull-bear} Neutral</div>
+     <div style="background:var(--red);width:${100-pctBull-(8-bull-bear)/8*100}%">${bear} Bear</div>`;
+  renderTradePlan(net,bull,bear);
+}
+function renderLiChart(idx,labels,data,col,meta,name){
+  const ctx=document.getElementById('liChart'+idx);
+  if(!ctx)return;
+  const datasets=[{data,borderColor:col,backgroundColor:col+'22',borderWidth:2,pointRadius:0,fill:true,tension:.35}];
+  // add threshold line for PMIs
+  if(meta.threshold){
+    datasets.push({data:labels.map(()=>meta.threshold),borderColor:'#5e7197',borderDash:[5,4],borderWidth:1,pointRadius:0,label:'50 = expansion'});
+  }
+  new Chart(ctx,{type:'line',
+    data:{labels,datasets},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>name+': '+meta.fmt(c.parsed.y)}}},
+      scales:{x:{display:false},y:{grid:{color:'#e2e8f0',drawBorder:false},ticks:{font:{size:9},maxTicksLimit:4,callback:v=>meta.fmt(v)}}},
+      maintainAspectRatio:false,animation:false}});
+}
+function tradeImpl(name,sig){
+  const m={};
+  m["Retail Sales"]=sig.signal==='Bullish'?'Long consumer discretionary (XLY), long USD':sig.signal==='Bearish'?'Short consumer discretionary, defensive tilt':'Hold retail sector';
+  m["CPI"]=sig.signal==='Bullish'?'Short duration (TLT puts), long TIPS, long commodities':sig.signal==='Bearish'?'Long duration, deflationary hedge':'Hold duration neutral';
+  m["UMCSI Sentiment"]=sig.latest<55?'Contrarian-bullish equities (sentiment washed out)':sig.signal==='Bullish'?'Consumer-led growth, long cyclicals':'Neutral consumer exposure';
+  m["Unemployment"]=sig.signal==='Bullish'?'Long equities, risk-on':sig.signal==='Bearish'?'Long vol (VIX), defensive, long bonds':'Hold labour-sensitive names';
+  m["ISM Mfg PMI"]=sig.latest>=50?'Long industrials, materials, copper':sig.signal==='Bearish'?'Short industrials, long defensives':'Hold industrial sector';
+  m["Durable Goods"]=sig.signal==='Bullish'?'Long manufacturing, transports, capex plays':sig.signal==='Bearish'?'Short industrials, recession hedge':'Hold industrial demand';
+  m["Real GDP"]=sig.signal==='Bullish'?'Risk-on: long equities, credit, cyclicals':sig.signal==='Bearish'?'Risk-off: defensive, quality bias':'Hold beta';
+  m["ISM Services NMI"]=sig.latest>=50?'Long services economy, financials, tech':sig.signal==='Bearish'?'Short services, recession hedge':'Hold services exposure';
+  return m[name]||'—';
+}
+function renderTradePlan(net,bull,bear){
+  const ul=document.getElementById('liTradePlan');
+  const items=[];
+  if(net>=1){
+    items.push('<b>Net risk-on</b> — overweight equities &amp; cyclical commodities; long industrials/materials on ISM 53.4 breakout.');
+    items.push('<b>Inflation guard</b> — CPI 333.9 still rising → keep short-duration, favour TIPS &amp; real assets (copper +, oil +).');
+    items.push('<b>Consumer hedge</b> — sentiment 49.5 is a contrarian buy signal BUT confirms late-cycle; keep quality tilt.');
+  } else if(net<=-1){
+    items.push('<b>Net risk-off</b> — raise cash, long vol, defensive sectors (utilities, staples, healthcare).');
+    items.push('<b>Recession watch</b> — leading indicators rolling over; add duration, reduce cyclicals.');
+  } else {
+    items.push('<b>Balanced / late-cycle</b> — favour <b>pair trades</b> (long strong-theme / short weak-theme) over directional bets.');
+    items.push('<b>Volatility harvest</b> — low VIX + cross-currents = sell option premium, run market-neutral.');
+  }
+  items.push('<b>Highest-conviction single signals:</b> ISM Mfg &gt;50 (long cyclicals), CPI rising (short duration), Sentiment &lt;55 (contrarian-long equities).');
+  items.push('<b>Conflicting signals to respect:</b> GDP firm but sentiment weak = classic late-cycle divergence; size smaller, keep stops tight (1×ATR).');
+  ul.innerHTML=items.map(i=>'<li>'+i+'</li>').join('');
+}
+
+/* ===================== INIT ===================== */
+renderBB();renderZBars();renderWL();renderMomentum();renderEndo();renderLeading();
+endoChart();offHighChart();cagrBearChart();pmiChart();pmiTrend();cotChart();convChart();classChart();atrCompareChart();endoCompChart();renderTrend();
+calcATR();calcVIX();calcDist();calcSpread();calcBeta();calcKelly();
+</script>
+</body>
+</html>

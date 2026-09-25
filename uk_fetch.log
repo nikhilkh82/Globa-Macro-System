@@ -1,0 +1,41 @@
+Fetching UK macro series ...
+
+ONS series:
+  ONS D7G7  CPI rate %                    449 pts  latest=('2026-05-01', 2.8)
+  ONS D7BT  CPI index                     461 pts  latest=('2026-05-01', 142.4)
+  ONS DKO8  Core CPI rate %               449 pts  latest=('2026-05-01', 2.6)
+  ONS GB7S  PPI output idx                833 pts  latest=('2026-05-01', 148.6)
+  ONS GHIK  PPI input idx                 210 pts  latest=('2026-05-01', 166.9)
+  ONS MGSX  Unemployment %                662 pts  latest=('2026-03-01', 5.0)
+  ONS KAC2  AWE earnings %                304 pts  latest=('2026-04-01', 4.6)
+  ONS A3PW  Debt/GDP % (Maastricht)       344 pts  latest=('2026-05-01', 100.2)
+  ONS HF6X  PSND % GDP                    417 pts  latest=('2026-05-01', 95.1)
+  ONS J5II  PS borrowing £m               589 pts  latest=('2026-05-01', -23294.0)
+
+FRED series:
+    (retry 1/5 after 3s: TimeoutError)
+    (retry 2/5 after 6s: TimeoutError)
+    (retry 3/5 after 9s: TimeoutError)
+    (retry 4/5 after 12s: TimeoutError)
+    (retry 5/5 after 15s: TimeoutError)
+  !! FAILED gilt10y: TimeoutError: The read operation timed out
+    (retry 1/5 after 3s: TimeoutError)
+    (retry 2/5 after 6s: TimeoutError)
+    (retry 3/5 after 9s: ConnectionResetError)
+    (retry 4/5 after 12s: TimeoutError)
+    (retry 5/5 after 15s: TimeoutError)
+  !! FAILED bank_rate: TimeoutError: The read operation timed out
+    (retry 1/5 after 3s: TimeoutError)
+    (retry 2/5 after 6s: ConnectionResetError)
+    (retry 3/5 after 9s: TimeoutError)
+    (retry 4/5 after 12s: TimeoutError)
+    (retry 5/5 after 15s: TimeoutError)
+  !! FAILED consumer_conf: TimeoutError: The read operation timed out
+    (retry 1/5 after 3s: TimeoutError)
+    (retry 2/5 after 6s: TimeoutError)
+    (retry 3/5 after 9s: TimeoutError)
+    (retry 4/5 after 12s: TimeoutError)
+    (retry 5/5 after 15s: TimeoutError)
+  !! FAILED m4: TimeoutError: The read operation timed out
+
+✓ Cached 10/14 series → uk_data_cache.json
