@@ -20,7 +20,7 @@ INLINE_CODE = re.compile(r"`[^`\n]*`")
 
 # Pages whose links are generated or which are roots — never counted as inbound
 # evidence (index links everything) and never flagged as orphans.
-GENERATED = {"index", "_Brain Health", "Dashboards - Brain Map"}
+GENERATED = {"index", "_Brain Health"}
 ROOTS = {"Global Macro Brain", "index", "log", "_Brain Health", "Dashboards - Brain Map"}
 
 PAGE_TYPES = ("domain", "reference", "live-read", "strategy-system", "dashboard-page", "deep-dive", "meta")
@@ -69,8 +69,23 @@ def parse(text: str) -> tuple[dict, str]:
     try:
         meta = yaml.safe_load(m.group(1)) or {}
     except yaml.YAMLError:
-        meta = {}
+        meta = _lenient(m.group(1))
     return (meta if isinstance(meta, dict) else {}), text[m.end():]
+
+
+def _lenient(block: str) -> dict:
+    """Line-by-line `key: value` fallback for frontmatter strict YAML rejects
+    (e.g. an unquoted summary containing a second `: `); each line is parsed alone."""
+    meta: dict = {}
+    for line in block.splitlines():
+        key, sep, value = line.partition(":")
+        if not sep or not key.strip() or key.startswith((" ", "\t", "-")):
+            continue
+        try:
+            meta[key.strip()] = yaml.safe_load(f"v: {value.strip()}")["v"]
+        except yaml.YAMLError:
+            meta[key.strip()] = value.strip().strip('"')
+    return meta
 
 
 def link_target(raw: str) -> str:

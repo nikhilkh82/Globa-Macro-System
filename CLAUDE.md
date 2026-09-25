@@ -43,3 +43,5 @@ python -m gms refresh            # regime + pulse + lint + sync
 ## What is not in git
 
 The vault's binary deliverables are not in git. These are the docx, pdf, html and ipynb reports in folders `10`–`14`, and the HTML dashboards. They are built by the desktop builder scripts, which stay on OneDrive. Lint counts links to those files as *asset links not in repo*, not as broken links. The archived logs before this migration also stay on OneDrive: see `brain/00 - Home/log.md`.
+
+`brain/00 - Home/Dashboards - Brain Map.md` is a **frozen snapshot**. The desktop `brain_sync.py` generates it from the dashboards on disk, and they aren't in git, so `gms sync` doesn't rebuild it. Lint treats it as an ordinary page, so its links count as inbound links. Refresh it by re-copying it from OneDrive after a desktop sync. `Log Archive 2026-06 to 2026-07.md` is a placeholder page that points to the verbatim archive on OneDrive.

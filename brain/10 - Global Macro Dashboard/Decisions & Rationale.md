@@ -7,7 +7,7 @@ summary: "Decision log for the 2026-06-19 session: naming/de-attribution calls, 
 tags: [meta, session-record, decisions, rationale, 2026-06-19]
 data_vintage: "n/a (decision log)"
 sources: 0
-updated: 2026-06-19
+updated: 2026-09-25
 ---
 
 # Decisions & Rationale (2026-06-19)
@@ -33,4 +33,4 @@ The judgment calls made in the [[2026-06-19 Session - Dashboards, Rebrand & FRED
 - **Installed a 2nd Python here vs. running on the main machine.** User chose to make this OneDrive-synced box self-sufficient; accepted a divergent local Python env as the cost.
 
 ## See also
-- [[2026-06-19 Session - Dashboards, Rebrand & FRED]] · [[Open Items & Follow-ups]] · [[Artifacts - Tools & Deliverables]]
+- [[2026-06-19 Session - Dashboards, Rebrand & FRED]] · [[Open Items & Follow-ups]] · [[Artifacts - Tools & Deliverables]] · [[_Session Records|Session Records]]

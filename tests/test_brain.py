@@ -37,6 +37,12 @@ def test_links_parse_alias_heading_and_skip_code():
     assert vault.extract_links("[[A|x]] [[B#h]] ![[C.png]] `[[D]]`\n```\n[[E]]\n```") == ["A", "B", "C.png"]
 
 
+def test_frontmatter_falls_back_when_strict_yaml_fails():
+    meta, body = vault.parse("---\ntitle: X\ntype: live-read\nsummary: Re-verified 2026-09-24: CLI = 100.96\ntags: [a, b]\n---\nbody")
+    assert meta == {"title": "X", "type": "live-read", "summary": "Re-verified 2026-09-24: CLI = 100.96", "tags": ["a", "b"]}
+    assert body == "body"
+
+
 def test_lint_clean_vault_resolves_aliases(brain: Path):
     (brain / "01 - Framework" / "The Global Macros Framework.md").write_text(
         page({"title": "The Global Macros Framework", "type": "domain", "data_asof": "n/a", "summary": '"method"'},

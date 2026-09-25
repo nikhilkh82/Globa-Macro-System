@@ -7,7 +7,7 @@ summary: The layered systematic top-down process (Field of Play → GDP → lead
 tags: [global-macro, framework, endogenous, exogenous, long-short, methodology]
 data_vintage: "2013–2022, mixed (curriculum 42-video, scoring sheets 2015 & 2017-era)"
 sources: 7
-updated: 2026-06-18
+updated: 2026-09-25
 ---
 
 # The Global Macros Framework
@@ -52,4 +52,4 @@ A Global Macros global-macro trader runs the layers in order and only lets ideas
 Statistics underpins every layer: the statistics guide stresses standard deviation as *the* volatility measure (1σ ≈ 68.27%, 2σ ≈ 95.45%, 3σ ≈ 99.73% of a normal distribution), warns that *correlation is not causation*, and shows correlations across equities "tend to 1" as the VIX rises — directly motivating the volatility and risk layers.
 
 ## See also
-[[Global Macro Brain]] · [[Trade Idea Generation Process]] · [[Glossary]] · [[GDP & Growth]] · [[Leading Indicators]] · [[Coincident Indicators]] · [[FX Endogenous-Exogenous Framework]] · [[Portfolio Management]] · [[Risk Management]] · [[Distribution of Returns]] · [[Macro Regime Snapshot]]
+[[Global Macro Brain]] · [[Trade Idea Generation Process]] · [[Glossary]] · [[GDP & Growth]] · [[Leading Indicators]] · [[Coincident Indicators]] · [[FX Endogenous-Exogenous Framework]] · [[Portfolio Management]] · [[Risk Management]] · [[Distribution of Returns]] · [[Macro Regime Snapshot]] · [[Global Macro Strategy — Framework & Live Section (July 2026)]]
