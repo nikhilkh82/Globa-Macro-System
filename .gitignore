@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.cache/
+.venv/
+outputs/*
+!outputs/.gitkeep
+brain/.obsidian/workspace*.json
+brain/.trash/
